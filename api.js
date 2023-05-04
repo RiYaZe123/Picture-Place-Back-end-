@@ -1,9 +1,17 @@
 const express = require('express');
-const app = express();
 const bodyParser = require('body-parser');
 const uuidAPIKEY = require('uuid-apikey');
 const jwt = require('jsonwebtoken');
 const secretKey = 'my_secret_key';
+
+const https = require('https');
+const fs = require('fs');
+
+const app = express();
+const options = {
+    key: fs.readFileSync("./config/cert.key"),
+    cert: fs.readFileSync("./config/cert.crt")
+  };
 
 app.use(bodyParser.json());
 
@@ -19,8 +27,8 @@ const users = [
 ];
 
 // 서버 시작
-const server = app.listen(3001, () => {
-    console.log('Start Server : localhost:3001');
+https.createServer(options, app).listen(3001, () => {
+    console.log('Start HTTPS Server : localhost:3001');
 });
 
 // api 키
