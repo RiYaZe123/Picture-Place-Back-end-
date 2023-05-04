@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const uuidAPIKEY = require('uuid-apikey');
 const jwt = require('jsonwebtoken');
+const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
 
 const https = require('https');
@@ -20,16 +21,24 @@ const tokens = [];
 
 // 임시 테스트 데이터
 const users = [
-    { id: "1", password: "101", name: "홍길동", city: "seoul"},
-    { id: "2", password: "201", name: "김철수", city: "seoul"},
-    { id: "3", password: "301", name: "박지성", city: "jeju"},
-    { id: "4", password: "401", name: "이영표", city: "jeju"}
+    { userid: "1", password: "101", name: "홍길동", city: "seoul"},
+    { userid: "2", password: "201", name: "김철수", city: "seoul"},
+    { userid: "3", password: "301", name: "박지성", city: "jeju"},
+    { userid: "4", password: "401", name: "이영표", city: "jeju"}
 ];
 
 // 서버 시작
 https.createServer(options, app).listen(3001, () => {
     console.log('Start HTTPS Server : localhost:3001');
 });
+
+// 데이터 베이스 연결
+db.connect(function(err) {
+    if(err) {
+        console.log('Unable to connect to MySQL');
+        process.exit(1);
+    }
+})
 
 // api 키
 const key = {
@@ -44,17 +53,20 @@ app.get("api/users/:apikey", (req, res) => {
 
 // 로그인
 app.post('/api/login', (req, res) => {
-    const { id, password } = req.body;
-    // 데이터베이스와 연결되어 req.body의 id와 password가 일치하는 놈을 찾아야함 (테스트 예시)
-    const user = users.find(u => u.id === id && u.password === password);
-
-    if (user) {
-        const token = jwt.sign({ id: user.id }, secretKey); // 토큰 생성
-        tokens.push(token); // 토큰 배열에 추가
-        res.json({ token });
-    } else {
-        res.status(401).send('아이디 또는 비밀번호가 일치하지 않습니다.');
-    }
+    const { userid, password } = req.body;
+    
+    // 데이터 베이스 조회
+    sql = "select * from pinover.user where userid = ? and password = ? limit 1;";
+    db.get().query(sql, [userid, password], function (err,  rows) {
+        if (err) throw err;
+        if(rows.length > 0) {
+            const token = jwt.sign(userid, secretKey); // 토큰 생성
+            tokens.push(token); // 토큰 배열에 추가
+            res.json({ token });
+        } else {
+            res.status(401).send('아이디 또는 비밀번호가 일치하지 않습니다.');
+        }
+    });
 });
 
 //인증이 필요한 요청에 대해 미들웨어 함수
@@ -92,18 +104,29 @@ app.post('/api/logout', (req, res) => {
 
 // 회원가입
 app.post('/api/signup', (req, res) => {
-    const { id, password, name, city } = req.body;
-  
-    if (users.find(u => u.id === id)) {
-      res.status(409).send('이미 등록된 아이디입니다.');
-    } else {
-      const newUser = { id, password, name, city };
-      users.push(newUser);
-      res.send('회원가입이 완료되었습니다.');
-    }
+    const { userid, password, name, address, hp } = req.body;
+    sql = "select * from pinover.user where userid = ? limit 1;";
+
+    // 데이터 베이스 조회
+    db.get().query(sql, userid, function (err,  rows) {
+        if (err) throw err;
+        if(rows.length > 0) {
+            res.status(409).send('이미 등록된 아이디입니다.');
+        } else {
+            // 데이터 베이스에 추가
+            sql = "insert into user (userid, password, name, address, hp) values (?, ?, ?, ?, ?);";
+            db.get().query(sql, [userid, password, name, address, hp], function (err,  data) {
+                if (err) throw err;
+                else {
+                    res.send('회원가입이 완료되었습니다.');
+                }
+            });
+        }
+    });
 });
 
 // CREATE문 
+// TO DO : 데이터 베이스로 전환
 app.post('/api/users/:apikey', (req, res) => {
     console.log(req.body)
     users.push(req.body);
@@ -111,6 +134,7 @@ app.post('/api/users/:apikey', (req, res) => {
 });
 
 // users/이름으로 검색
+// TO DO : 데이터 베이스로 전환
 app.get('/api/users/:apikey/:id', async (req, res) => {
     let {
         apikey,
@@ -121,7 +145,7 @@ app.get('/api/users/:apikey/:id', async (req, res) => {
          res.send('apikey is not valid');
     } else {
         let data = users.find((u) => {
-            return u.id === req.params.id;
+            return u.id === id;
         });
         if(data) {
             res.json(data);
@@ -132,6 +156,7 @@ app.get('/api/users/:apikey/:id', async (req, res) => {
 });
 
 // UPDATE문
+// TO DO : 데이터 베이스로 전환
 app.put('/api/users/:apikey/:id', (req, res) => {
     let {
         apikey,
@@ -141,7 +166,7 @@ app.put('/api/users/:apikey/:id', (req, res) => {
     if(!uuidAPIKEY.check(apikey, key.uuid)) {
         res.send('apikey is not valid');
     } else {
-        let foundIndex = users.findIndex(u => u.id === id)
+        let foundIndex = users.findIndex(u => u.userid === id)
         if(foundIndex === -1) {
             res.status(404).json({ errorMessage: "User was not found" });
         } else {
@@ -152,6 +177,7 @@ app.put('/api/users/:apikey/:id', (req, res) => {
 });
 
 // DELETE문
+// TO DO : 데이터 베이스로 전환
 app.delete('/api/users/:apikey/:id', (req, res) => {
     let {
         apikey,
@@ -161,7 +187,7 @@ app.delete('/api/users/:apikey/:id', (req, res) => {
     if(!uuidAPIKEY.check(apikey, key.uuid)) {
         res.send('apikey is not valid');
     } else {
-        let foundIndex = users.findIndex(u => u.id === id)
+        let foundIndex = users.findIndex(u => u.userid === id)
         if(foundIndex === -1) {
             res.status(404).json({ errorMessage: "User was not found" });
         } else {
