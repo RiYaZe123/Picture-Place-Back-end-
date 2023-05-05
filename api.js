@@ -49,6 +49,9 @@ app.post('/api/login', (req, res) => {
                 res.status(401).json(error);
             }
         });
+    } else {
+        const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
+        res.status(401).json(error);
     }
 });
 
@@ -116,6 +119,9 @@ app.post('/api/signup', (req, res) => {
                 });
             }
         });
+    } else {
+        const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
+        res.status(401).json(error);
     }
 });
 
@@ -156,11 +162,13 @@ app.put('/api/users', authenticateToken, (req, res) => {
                 res.status(401).json(error);
             }
         });
+    } else {
+        const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
+        res.status(401).json(error);
     }
 });
 
 // DELETE문
-// TO DO : 데이터 베이스로 전환
 app.delete('/api/users', authenticateToken, (req, res) => {
     const userid = req.user;
     const { password, name, address, hp } = req.body;
@@ -193,5 +201,8 @@ app.delete('/api/users', authenticateToken, (req, res) => {
                 res.status(401).json(error);
             }
         });
+    } else {
+        const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
+        res.status(401).json(error);
     }
 });
