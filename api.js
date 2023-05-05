@@ -34,19 +34,22 @@ db.connect(function(err) {
 // 로그인
 app.post('/api/login', (req, res) => {
     const { userid, password } = req.body;
-    
-    // 데이터 베이스 조회
-    sql = "select * from pinover.user where userid = ? and password = ? limit 1;";
-    db.get().query(sql, [userid, password], function (err,  rows) {
-        if (err) throw err;
-        if(rows.length > 0) {
-            const token = jwt.sign(userid, secretKey); // 토큰 생성
-            tokens.push(token); // 토큰 배열에 추가
-            res.json({ token });
-        } else {
-            res.status(401).send('아이디 또는 비밀번호가 일치하지 않습니다.');
-        }
-    });
+
+    if(userid && password) { // 정보가 모두 입력되었는지 확인
+        // 데이터 베이스 조회
+        sql = "select * from pinover.user where userid = ? and password = ? limit 1;";
+        db.get().query(sql, [userid, password], function (err,  rows) {
+            if (err) throw err;
+            if(rows.length > 0) {
+                const token = jwt.sign(userid, secretKey); // 토큰 생성
+                tokens.push(token); // 토큰 배열에 추가
+                res.json({ token });
+            } else {
+                const error = { "errorCode" : "U006", "message" : "아이디 또는 비밀번호가 일치하지 않습니다."};
+                res.status(401).json(error);
+            }
+        });
+    }
 });
 
 //인증이 필요한 요청에 대해 미들웨어 함수
@@ -78,7 +81,8 @@ app.get('/api/protected', authenticateToken, (req, res) => {
 app.post('/api/logout', authenticateToken, (req, res) => {
     const token = req.headers.authorization;
     if (!token) {
-        res.status(401).send('로그인이 되어 있지 않습니다.');
+        const error = { "errorCode" : "U006", "message" : "로그인이 되어 있지 않습니다."};
+        res.status(401).json(error);
         return;
     }
 
@@ -94,22 +98,25 @@ app.post('/api/signup', (req, res) => {
     const { userid, password, name, address, hp } = req.body;
     sql = "select * from pinover.user where userid = ? limit 1;";
 
-    // 데이터 베이스 조회
-    db.get().query(sql, userid, function (err,  rows) {
-        if (err) throw err;
-        if(rows.length > 0) {
-            res.status(409).send('이미 등록된 아이디입니다.');
-        } else {
-            // 데이터 베이스에 추가
-            sql = "insert into user (userid, password, name, address, hp) values (?, ?, ?, ?, ?);";
-            db.get().query(sql, [userid, password, name, address, hp], function (err,  data) {
-                if (err) throw err;
-                else {
-                    res.send('회원가입이 완료되었습니다.');
-                }
-            });
-        }
-    });
+    if(userid && password && name && address & hp) { // 정보가 모두 입력되었는지 확인
+        // 데이터 베이스 조회
+        db.get().query(sql, userid, function (err,  rows) {
+            if (err) throw err;
+            if(rows.length > 0) {
+                const error = { "errorCode" : "U006", "message" : "이미 등록된 아이디입니다."};
+                res.status(409).json(error);
+            } else {
+                // 데이터 베이스에 추가
+                sql = "insert into user (userid, password, name, address, hp) values (?, ?, ?, ?, ?);";
+                db.get().query(sql, [userid, password, name, address, hp], function (err,  data) {
+                    if (err) throw err;
+                    else {
+                        res.send('회원가입이 완료되었습니다.');
+                    }
+                });
+            }
+        });
+    }
 });
 
 // users/이름으로 검색
@@ -131,54 +138,62 @@ app.put('/api/users', authenticateToken, (req, res) => {
     const userid = req.user.userid;
     const { password, name, address, hp } = req.body;
 
-    sql = "select * from pinover.user where userid = ? limit 1;";
-    db.get().query(sql, userid, function (err,  rows) {
-        if (err) throw err;
-        if(rows.length > 0) {
-            // 데이터 베이스 수정
-            sql = "update user set password = ?, name = ?, address = ?, hp = ? where userid=?;";
-            db.get().query(sql, [password, name, address, hp, userid], function (err,  data) {
-                if (err) throw err;
-                else {
-                    res.send('회원 정보 수정이 완료되었습니다.');
-                }
-            });
-        } else {
-            res.status(401).send('유저를 찾을 수 없습니다.');
-        }
-    });
+    if(password && name && address && hp) { // 정보가 모두 입력되었는지 확인
+        sql = "select * from pinover.user where userid = ? limit 1;";
+        db.get().query(sql, userid, function (err,  rows) {
+            if (err) throw err;
+            if(rows.length > 0) {
+                // 데이터 베이스 수정
+                sql = "update user set password = ?, name = ?, address = ?, hp = ? where userid=?;";
+                db.get().query(sql, [password, name, address, hp, userid], function (err,  data) {
+                    if (err) throw err;
+                    else {
+                        res.send('회원 정보 수정이 완료되었습니다.');
+                    }
+                });
+            } else {
+                const error = { "errorCode" : "U006", "message" : "유저를 찾을 수 없습니다."};
+                res.status(401).json(error);
+            }
+        });
+    }
 });
 
 // DELETE문
 // TO DO : 데이터 베이스로 전환
-app.delete('/api/users', authenticateToken, (req, res) => {
-    const userid = req.user.userid;
-    const { password } = req.body;
-    // 데이터 베이스 조회
-    sql = "select * from pinover.user where userid = ? limit 1;";
-    db.get().query(sql, userid, function (err,  rows) {
-        if (err) throw err;
-        if(rows.length > 0) {
-            // 데이터 베이스에서 삭제
-            sql = "delete from user where userid=?";
-            db.get().query(sql, userid, function (err,  rows) {
-                if (err) throw err;
-                else {
-                    // 토큰 삭제
-                    const authHeader = req.headers['authorization'];
-                    const token = authHeader && authHeader.split(' ')[1];
-                    const index = tokens.indexOf(token);
-                    if (index !== -1) {
-                        tokens.splice(index, 1);
+app.delete('/api/users/:userid', authenticateToken, (req, res) => {
+    let {userid} = req.params;
+    const { password, name, address, hp } = req.body;
+
+    if(password){
+        // 데이터 베이스 조회
+        sql = "select * from pinover.user where userid = ? limit 1;";
+        db.get().query(sql, userid, function (err,  rows) {
+            if (err) throw err;
+            if(rows.length > 0) {
+                // 데이터 베이스에서 삭제
+                sql = "delete from user where userid=?";
+                db.get().query(sql, userid, function (err,  rows) {
+                    if (err) throw err;
+                    else {
+                        const authHeader = req.headers['authorization'];
+                        const token = authHeader && authHeader.split(' ')[1];
+                        if (token) {
+                            // 토큰 디코딩
+                            const decodedToken = jwt.decode(token, secretKey);
+                            if (decodedToken) {
+                                const userIndex = tokens.findIndex((t) => t.userid === decodedToken.userid);
+                                if (userIndex !== -1) {
+                                    tokens.splice(userIndex, 1);
+                                }
+                            }
+                        }
                         res.send('회원 탈퇴가 완료되었습니다.');
                     }
-                    else
-                        res.sendStatus(401);
-
-                }
-            });
-        } else {
-            res.status(401).send('유저를 찾을 수 없습니다.');
-        }
-    });
+                });
+            } else {
+                res.status(401).send('유저를 찾을 수 없습니다.');
+            }
+        });
+    }
 });
