@@ -58,6 +58,11 @@ function authenticateToken(req, res, next) {
 
     if (token == null) return res.sendStatus(401);
 
+    // tokens 배열에서 현재 요청에 대한 인증 토큰이 있는지 확인
+    if (!tokens.includes(token)) {
+        return res.sendStatus(403);
+    }
+
     jwt.verify(token, secretKey, (err, user) => {
         if (err) return res.sendStatus(403);
         req.user = user;
@@ -122,8 +127,8 @@ app.get('/api/users/:userid', async (req, res) => {
 });
 
 // UPDATE문
-app.put('/api/users/:userid', authenticateToken, (req, res) => {
-    let {userid} = req.params;
+app.put('/api/users', authenticateToken, (req, res) => {
+    const userid = req.user.userid;
     const { password, name, address, hp } = req.body;
 
     sql = "select * from pinover.user where userid = ? limit 1;";
@@ -146,9 +151,9 @@ app.put('/api/users/:userid', authenticateToken, (req, res) => {
 
 // DELETE문
 // TO DO : 데이터 베이스로 전환
-app.delete('/api/users/:userid', authenticateToken, (req, res) => {
-    let {userid} = req.params;
-    const { password, name, address, hp } = req.body;
+app.delete('/api/users', authenticateToken, (req, res) => {
+    const userid = req.user.userid;
+    const { password } = req.body;
     // 데이터 베이스 조회
     sql = "select * from pinover.user where userid = ? limit 1;";
     db.get().query(sql, userid, function (err,  rows) {
@@ -159,19 +164,17 @@ app.delete('/api/users/:userid', authenticateToken, (req, res) => {
             db.get().query(sql, userid, function (err,  rows) {
                 if (err) throw err;
                 else {
+                    // 토큰 삭제
                     const authHeader = req.headers['authorization'];
                     const token = authHeader && authHeader.split(' ')[1];
-                    if (token) {
-                        // 토큰 디코딩
-                        const decodedToken = jwt.decode(token, secretKey);
-                        if (decodedToken) {
-                            const userIndex = tokens.findIndex((t) => t.userid === decodedToken.userid);
-                            if (userIndex !== -1) {
-                                tokens.splice(userIndex, 1);
-                            }
-                        }
+                    const index = tokens.indexOf(token);
+                    if (index !== -1) {
+                        tokens.splice(index, 1);
+                        res.send('회원 탈퇴가 완료되었습니다.');
                     }
-                    res.send('회원 탈퇴가 완료되었습니다.');
+                    else
+                        res.sendStatus(401);
+
                 }
             });
         } else {
