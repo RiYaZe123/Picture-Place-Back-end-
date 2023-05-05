@@ -206,7 +206,7 @@ app.put('/api/users', authenticateToken, (req, res) => {
 // DELETE문
 app.delete('/api/users', authenticateToken, (req, res) => {
     const userid = req.user;
-    const { password, name, address, hp } = req.body;
+    const { password } = req.body;
 
     if(password){
         // 데이터 베이스 조회
