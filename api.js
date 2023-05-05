@@ -161,8 +161,8 @@ app.put('/api/users', authenticateToken, (req, res) => {
 
 // DELETE문
 // TO DO : 데이터 베이스로 전환
-app.delete('/api/users/:userid', authenticateToken, (req, res) => {
-    let {userid} = req.params;
+app.delete('/api/users', authenticateToken, (req, res) => {
+    const userid = req.user.userid;
     const { password, name, address, hp } = req.body;
 
     if(password){
@@ -176,23 +176,21 @@ app.delete('/api/users/:userid', authenticateToken, (req, res) => {
                 db.get().query(sql, userid, function (err,  rows) {
                     if (err) throw err;
                     else {
+                        // 토큰 삭제
                         const authHeader = req.headers['authorization'];
                         const token = authHeader && authHeader.split(' ')[1];
-                        if (token) {
-                            // 토큰 디코딩
-                            const decodedToken = jwt.decode(token, secretKey);
-                            if (decodedToken) {
-                                const userIndex = tokens.findIndex((t) => t.userid === decodedToken.userid);
-                                if (userIndex !== -1) {
-                                    tokens.splice(userIndex, 1);
-                                }
-                            }
+                        const index = tokens.indexOf(token);
+                        if (index !== -1) {
+                            tokens.splice(index, 1);
+                            res.send('회원 탈퇴가 완료되었습니다.');
                         }
-                        res.send('회원 탈퇴가 완료되었습니다.');
+                        else
+                            res.sendStatus(401);
                     }
                 });
             } else {
-                res.status(401).send('유저를 찾을 수 없습니다.');
+                const error = { "errorCode" : "U006", "message" : "유저를 찾을 수 없습니다."};
+                res.status(401).json(error);
             }
         });
     }
