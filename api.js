@@ -70,7 +70,7 @@ app.get('/api/protected', authenticateToken, (req, res) => {
 });
 
 // 로그아웃
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', authenticateToken, (req, res) => {
     const token = req.headers.authorization;
     if (!token) {
         res.status(401).send('로그인이 되어 있지 않습니다.');
