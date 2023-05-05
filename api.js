@@ -1,6 +1,5 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const uuidAPIKEY = require('uuid-apikey');
 const jwt = require('jsonwebtoken');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
@@ -18,14 +17,6 @@ app.use(bodyParser.json());
 
 // 토큰 배열
 const tokens = [];
-
-// 임시 테스트 데이터
-const users = [
-    { userid: "1", password: "101", name: "홍길동", city: "seoul"},
-    { userid: "2", password: "201", name: "김철수", city: "seoul"},
-    { userid: "3", password: "301", name: "박지성", city: "jeju"},
-    { userid: "4", password: "401", name: "이영표", city: "jeju"}
-];
 
 // 서버 시작
 https.createServer(options, app).listen(3001, () => {
