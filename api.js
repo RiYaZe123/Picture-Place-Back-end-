@@ -98,7 +98,7 @@ app.post('/api/signup', (req, res) => {
     const { userid, password, name, address, hp } = req.body;
     sql = "select * from pinover.user where userid = ? limit 1;";
 
-    if(userid && password && name && address & hp) { // 정보가 모두 입력되었는지 확인
+    if(userid && password && name && address && hp) { // 정보가 모두 입력되었는지 확인
         // 데이터 베이스 조회
         db.get().query(sql, userid, function (err,  rows) {
             if (err) throw err;
