@@ -44,7 +44,8 @@ app.post('/api/login', (req, res) => {
             tokens.push(token); // 토큰 배열에 추가
             res.json({ token });
         } else {
-            res.status(401).send('아이디 또는 비밀번호가 일치하지 않습니다.');
+            const error = { "errorCode" : "U006", "message" : "아이디 또는 비밀번호가 일치하지 않습니다."};
+            res.status(401).json(error);
         }
     });
 });
@@ -73,7 +74,8 @@ app.get('/api/protected', authenticateToken, (req, res) => {
 app.post('/api/logout', authenticateToken, (req, res) => {
     const token = req.headers.authorization;
     if (!token) {
-        res.status(401).send('로그인이 되어 있지 않습니다.');
+        const error = { "errorCode" : "U006", "message" : "로그인이 되어 있지 않습니다."};
+        res.status(401).json(error);
         return;
     }
 
@@ -93,7 +95,8 @@ app.post('/api/signup', (req, res) => {
     db.get().query(sql, userid, function (err,  rows) {
         if (err) throw err;
         if(rows.length > 0) {
-            res.status(409).send('이미 등록된 아이디입니다.');
+            const error = { "errorCode" : "U006", "message" : "이미 등록된 아이디입니다."};
+            res.status(409).json(error);
         } else {
             // 데이터 베이스에 추가
             sql = "insert into user (userid, password, name, address, hp) values (?, ?, ?, ?, ?);";
@@ -139,7 +142,8 @@ app.put('/api/users/:userid', authenticateToken, (req, res) => {
                 }
             });
         } else {
-            res.status(401).send('유저를 찾을 수 없습니다.');
+            const error = { "errorCode" : "U006", "message" : "유저를 찾을 수 없습니다."};
+            res.status(401).json(error);
         }
     });
 });
@@ -175,7 +179,8 @@ app.delete('/api/users/:userid', authenticateToken, (req, res) => {
                 }
             });
         } else {
-            res.status(401).send('유저를 찾을 수 없습니다.');
+            const error = { "errorCode" : "U006", "message" : "유저를 찾을 수 없습니다."};
+            res.status(401).json(error);
         }
     });
 });
