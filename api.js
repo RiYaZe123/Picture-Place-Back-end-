@@ -135,7 +135,7 @@ app.get('/api/users/:userid', async (req, res) => {
 
 // UPDATE문
 app.put('/api/users', authenticateToken, (req, res) => {
-    const userid = req.user.userid;
+    const userid = req.user;
     const { password, name, address, hp } = req.body;
 
     if(password && name && address && hp) { // 정보가 모두 입력되었는지 확인
@@ -162,7 +162,7 @@ app.put('/api/users', authenticateToken, (req, res) => {
 // DELETE문
 // TO DO : 데이터 베이스로 전환
 app.delete('/api/users', authenticateToken, (req, res) => {
-    const userid = req.user.userid;
+    const userid = req.user;
     const { password, name, address, hp } = req.body;
 
     if(password){
