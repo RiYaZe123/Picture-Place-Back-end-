@@ -50,6 +50,8 @@ app.post('/api/login', (req, res) => {
 });
 
 //인증이 필요한 요청에 대해 미들웨어 함수
+// 401 Unauthorized 응답은 클라이언트의 요청에 대해 인증 정보가 필요한데, 해당 정보가 없거나 잘못된 경우를 나타냅니다.
+// 403 Forbidden 응답은 클라이언트가 인증되었으나 요청한 자원에 접근할 권한이 없는 경우를 나타냅니다.
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -120,7 +122,7 @@ app.get('/api/users/:userid', async (req, res) => {
 });
 
 // UPDATE문
-app.put('/api/users/:userid', (req, res) => {
+app.put('/api/users/:userid', authenticateToken, (req, res) => {
     let {userid} = req.params;
     const { password, name, address, hp } = req.body;
 
@@ -144,7 +146,7 @@ app.put('/api/users/:userid', (req, res) => {
 
 // DELETE문
 // TO DO : 데이터 베이스로 전환
-app.delete('/api/users/:userid', (req, res) => {
+app.delete('/api/users/:userid', authenticateToken, (req, res) => {
     let {userid} = req.params;
     const { password, name, address, hp } = req.body;
     // 데이터 베이스 조회
@@ -157,6 +159,18 @@ app.delete('/api/users/:userid', (req, res) => {
             db.get().query(sql, userid, function (err,  rows) {
                 if (err) throw err;
                 else {
+                    const authHeader = req.headers['authorization'];
+                    const token = authHeader && authHeader.split(' ')[1];
+                    if (token) {
+                        // 토큰 디코딩
+                        const decodedToken = jwt.decode(token, secretKey);
+                        if (decodedToken) {
+                            const userIndex = tokens.findIndex((t) => t.userid === decodedToken.userid);
+                            if (userIndex !== -1) {
+                                tokens.splice(userIndex, 1);
+                            }
+                        }
+                    }
                     res.send('회원 탈퇴가 완료되었습니다.');
                 }
             });
