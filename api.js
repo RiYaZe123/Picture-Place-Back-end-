@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const db = require("./db"); // 데이터베이스
@@ -37,15 +38,24 @@ app.post('/api/login', (req, res) => {
 
     if(userid && password) { // 정보가 모두 입력되었는지 확인
         // 데이터 베이스 조회
-        sql = "select * from pinover.user where userid = ? and password = ? limit 1;";
-        db.get().query(sql, [userid, password], function (err,  rows) {
+        sql = "select * from pinover.user where userid = ? limit 1;";
+        db.get().query(sql, userid, function (err,  rows) {
             if (err) throw err;
             if(rows.length > 0) {
-                const token = jwt.sign(userid, secretKey); // 토큰 생성
-                tokens.push(token); // 토큰 배열에 추가
-                res.json({ token });
+                let user = rows[0];
+                crypto.pbkdf2(password, user.salt, 100000, 64, 'sha512', function(err, derivedKey){ // 패스워드 sha512 암호화, salt 사용
+                    if(err) throw err;
+                    if(derivedKey.toString('base64') === user.password){ // 암호화된 패스워드가 일치하는지 확인
+                        const token = jwt.sign(userid, secretKey); // 토큰 생성
+                        tokens.push(token); // 토큰 배열에 추가
+                        res.json({ token });
+                    } else {
+                        const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
+                        res.status(401).json(error);
+                    }
+                });
             } else {
-                const error = { "errorCode" : "U006", "message" : "아이디 또는 비밀번호가 일치하지 않습니다."};
+                const error = { "errorCode" : "U006", "message" : "아이디가 존재하지 않습니다."};
                 res.status(401).json(error);
             }
         });
@@ -110,12 +120,20 @@ app.post('/api/signup', (req, res) => {
                 res.status(409).json(error);
             } else {
                 // 데이터 베이스에 추가
-                sql = "insert into user (userid, password, name, address, hp) values (?, ?, ?, ?, ?);";
-                db.get().query(sql, [userid, password, name, address, hp], function (err,  data) {
+                crypto.randomBytes(64, (err, buf) => { // salt 생성
                     if (err) throw err;
-                    else {
-                        res.send('회원가입이 완료되었습니다.');
-                    }
+                    let salt = buf.toString('base64');
+                    crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, derivedKey) => { // 패스워드 sha512 암호화, salt 사용
+                        if (err) throw err;
+                        let pw = derivedKey.toString('base64');
+                        sql = "insert into user (userid, password, name, address, hp, salt) values (?, ?, ?, ?, ?, ?);";
+                        db.get().query(sql, [userid, pw, name, address, hp, salt], function (err,  data) {
+                            if (err) throw err;
+                            else {
+                                res.send('회원가입이 완료되었습니다.');
+                            }
+                        });
+                    });
                 });
             }
         });
@@ -142,19 +160,36 @@ app.get('/api/users/:userid', async (req, res) => {
 // UPDATE문
 app.put('/api/users', authenticateToken, (req, res) => {
     const userid = req.user;
-    const { password, name, address, hp } = req.body;
+    const { password, updatepassword, name, address, hp } = req.body;
 
-    if(password && name && address && hp) { // 정보가 모두 입력되었는지 확인
+    if(password && updatepassword && name && address && hp) { // 정보가 모두 입력되었는지 확인
         sql = "select * from pinover.user where userid = ? limit 1;";
         db.get().query(sql, userid, function (err,  rows) {
             if (err) throw err;
             if(rows.length > 0) {
-                // 데이터 베이스 수정
-                sql = "update user set password = ?, name = ?, address = ?, hp = ? where userid=?;";
-                db.get().query(sql, [password, name, address, hp, userid], function (err,  data) {
-                    if (err) throw err;
-                    else {
-                        res.send('회원 정보 수정이 완료되었습니다.');
+                let user = rows[0];
+                crypto.pbkdf2(password, user.salt, 100000, 64, 'sha512', function(err, derivedKey){ // 패스워드 sha512 암호화, salt 사용
+                    if(err) throw err;
+                    if(derivedKey.toString('base64') === user.password){ // 암호화된 패스워드가 일치하는지 확인
+                        // 데이터 베이스 수정
+                        crypto.randomBytes(64, (err, buf) => {
+                            if (err) throw err;
+                            let salt = buf.toString('base64');
+                            crypto.pbkdf2(updatepassword, salt, 100000, 64, 'sha512', (err, derivedKey) => {
+                                if (err) throw err;
+                                let pw = derivedKey.toString('base64');
+                                sql = "update user set password = ?, name = ?, address = ?, hp = ?, salt=? where userid=?;";
+                                db.get().query(sql, [pw, name, address, hp, salt, userid], function (err,  data) {
+                                    if (err) throw err;
+                                    else {
+                                        res.send('회원 정보 수정이 완료되었습니다.');
+                                    }
+                                });
+                            });
+                        });
+                    } else {
+                        const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
+                        res.status(401).json(error);
                     }
                 });
             } else {
@@ -179,21 +214,30 @@ app.delete('/api/users', authenticateToken, (req, res) => {
         db.get().query(sql, userid, function (err,  rows) {
             if (err) throw err;
             if(rows.length > 0) {
-                // 데이터 베이스에서 삭제
-                sql = "delete from user where userid=?";
-                db.get().query(sql, userid, function (err,  rows) {
-                    if (err) throw err;
-                    else {
-                        // 토큰 삭제
-                        const authHeader = req.headers['authorization'];
-                        const token = authHeader && authHeader.split(' ')[1];
-                        const index = tokens.indexOf(token);
-                        if (index !== -1) {
-                            tokens.splice(index, 1);
-                            res.send('회원 탈퇴가 완료되었습니다.');
-                        }
-                        else
-                            res.sendStatus(401);
+                let user = rows[0];
+                crypto.pbkdf2(password, user.salt, 100000, 64, 'sha512', function(err, derivedKey){ // 패스워드 sha512 암호화, salt 사용
+                    if(err) throw err;
+                    if(derivedKey.toString('base64') === user.password){ // 암호화된 패스워드가 일치하는지 확인
+                        // 데이터 베이스에서 삭제
+                        sql = "delete from user where userid=?";
+                        db.get().query(sql, userid, function (err,  rows) {
+                            if (err) throw err;
+                            else {
+                                // 토큰 삭제
+                                const authHeader = req.headers['authorization'];
+                                const token = authHeader && authHeader.split(' ')[1];
+                                const index = tokens.indexOf(token);
+                                if (index !== -1) {
+                                    tokens.splice(index, 1);
+                                    res.send('회원 탈퇴가 완료되었습니다.');
+                                }
+                                else
+                                    res.sendStatus(401);
+                            }
+                        });
+                    } else {
+                        const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
+                        res.status(401).json(error);
                     }
                 });
             } else {
