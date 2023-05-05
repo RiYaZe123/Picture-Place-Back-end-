@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const uuidAPIKEY = require('uuid-apikey');
 const jwt = require('jsonwebtoken');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
@@ -11,7 +12,7 @@ const app = express();
 const options = {
     key: fs.readFileSync("./config/cert.key"),
     cert: fs.readFileSync("./config/cert.crt")
-};
+  };
 
 app.use(bodyParser.json());
 
@@ -113,40 +114,63 @@ app.post('/api/signup', (req, res) => {
     });
 });
 
-// UPDATE문
+// users/이름으로 검색
 // TO DO : 데이터 베이스로 전환
-app.put('/api/users/:id', (req, res) => {
-    let {
-        apikey,
-        id
-    } = req.params;
-
-    let foundIndex = users.findIndex(u => u.userid === id)
-    if(foundIndex === -1) {
-        res.status(404).json({ errorMessage: "User was not found" });
+app.get('/api/users/:userid', async (req, res) => {
+    let userid = req.params;
+    let data = users.find((u) => {
+        return u.id === userid;
+    });
+    if(data) {
+        res.json(data);
     } else {
-        users[foundIndex] = { ...users[foundIndex], ...req.body};
-        res.json(users);
+        res.send('no person.');
     }
+});
+
+// UPDATE문
+app.put('/api/users/:userid', (req, res) => {
+    let {userid} = req.params;
+    const { password, name, address, hp } = req.body;
+
+    sql = "select * from pinover.user where userid = ? limit 1;";
+    db.get().query(sql, userid, function (err,  rows) {
+        if (err) throw err;
+        if(rows.length > 0) {
+            // 데이터 베이스 수정
+            sql = "update user set password = ?, name = ?, address = ?, hp = ? where userid=?;";
+            db.get().query(sql, [password, name, address, hp, userid], function (err,  data) {
+                if (err) throw err;
+                else {
+                    res.send('회원 정보 수정이 완료되었습니다.');
+                }
+            });
+        } else {
+            res.status(401).send('유저를 찾을 수 없습니다.');
+        }
+    });
 });
 
 // DELETE문
 // TO DO : 데이터 베이스로 전환
-app.delete('/api/users/:id', (req, res) => {
-    let {
-        apikey,
-        id
-    } = req.params;
-
-    if(!uuidAPIKEY.check(apikey, key.uuid)) {
-        res.send('apikey is not valid');
-    } else {
-        let foundIndex = users.findIndex(u => u.userid === id)
-        if(foundIndex === -1) {
-            res.status(404).json({ errorMessage: "User was not found" });
+app.delete('/api/users/:userid', (req, res) => {
+    let {userid} = req.params;
+    const { password, name, address, hp } = req.body;
+    // 데이터 베이스 조회
+    sql = "select * from pinover.user where userid = ? limit 1;";
+    db.get().query(sql, userid, function (err,  rows) {
+        if (err) throw err;
+        if(rows.length > 0) {
+            // 데이터 베이스에서 삭제
+            sql = "delete from user where userid=?";
+            db.get().query(sql, userid, function (err,  rows) {
+                if (err) throw err;
+                else {
+                    res.send('회원 탈퇴가 완료되었습니다.');
+                }
+            });
         } else {
-            let foundUser = users.splice(foundIndex, 1);
-            res.json(foundUser[0]);
+            res.status(401).send('유저를 찾을 수 없습니다.');
         }
-   }
+    });
 });
