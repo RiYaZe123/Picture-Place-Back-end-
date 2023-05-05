@@ -1,6 +1,5 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const uuidAPIKEY = require('uuid-apikey');
 const jwt = require('jsonwebtoken');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
@@ -12,7 +11,7 @@ const app = express();
 const options = {
     key: fs.readFileSync("./config/cert.key"),
     cert: fs.readFileSync("./config/cert.crt")
-  };
+};
 
 app.use(bodyParser.json());
 
@@ -39,17 +38,6 @@ db.connect(function(err) {
         process.exit(1);
     }
 })
-
-// api 키
-const key = {
-    apiKey: '5BZ2C23-S3GMNT9-JD47NZ8-B0SMTW0',
-    uuid: '2afe2608-c8e1-4ae9-9348-7afd58334d70'
-}
-
-// READ문
-app.get("api/users/:apikey", (req, res) => {
-    res.json(users);
-});
 
 // 로그인
 app.post('/api/login', (req, res) => {
@@ -125,60 +113,26 @@ app.post('/api/signup', (req, res) => {
     });
 });
 
-// CREATE문 
-// TO DO : 데이터 베이스로 전환
-app.post('/api/users/:apikey', (req, res) => {
-    console.log(req.body)
-    users.push(req.body);
-    res.json(users);
-});
-
-// users/이름으로 검색
-// TO DO : 데이터 베이스로 전환
-app.get('/api/users/:apikey/:id', async (req, res) => {
-    let {
-        apikey,
-        id
-    } = req.params;
-
-    if(!uuidAPIKEY.check(apikey, key.uuid)) {
-         res.send('apikey is not valid');
-    } else {
-        let data = users.find((u) => {
-            return u.id === id;
-        });
-        if(data) {
-            res.json(data);
-        } else {
-            res.send('no person.');
-        }
-    }
-});
-
 // UPDATE문
 // TO DO : 데이터 베이스로 전환
-app.put('/api/users/:apikey/:id', (req, res) => {
+app.put('/api/users/:id', (req, res) => {
     let {
         apikey,
         id
     } = req.params;
 
-    if(!uuidAPIKEY.check(apikey, key.uuid)) {
-        res.send('apikey is not valid');
+    let foundIndex = users.findIndex(u => u.userid === id)
+    if(foundIndex === -1) {
+        res.status(404).json({ errorMessage: "User was not found" });
     } else {
-        let foundIndex = users.findIndex(u => u.userid === id)
-        if(foundIndex === -1) {
-            res.status(404).json({ errorMessage: "User was not found" });
-        } else {
-            users[foundIndex] = { ...users[foundIndex], ...req.body};
-            res.json(users);
-        }
-   }    
+        users[foundIndex] = { ...users[foundIndex], ...req.body};
+        res.json(users);
+    }
 });
 
 // DELETE문
 // TO DO : 데이터 베이스로 전환
-app.delete('/api/users/:apikey/:id', (req, res) => {
+app.delete('/api/users/:id', (req, res) => {
     let {
         apikey,
         id
