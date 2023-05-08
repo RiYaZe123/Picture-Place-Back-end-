@@ -264,12 +264,27 @@ app.post('/api/upload', authenticateToken, upload.single('photo'), (req, res) =>
     const {originalname, path} = file;
     const pictureid = path.split('\\');
     const extension = originalname.split('.');
-    const userId = req.user;
+    const userid = req.user;
     const uploadDate = new Date();
-    const postingid = 0;
+    let postingid = 0;
 
-    const sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
-    db.get().query(sql, [userId, pictureid[pictureid.length - 1], originalname, uploadDate, extension[extension.length - 1], postingid], (err, result) => {
+    const { roadname, content, disclosure } = req.body;
+    const postdate = new Date();
+
+    // 글 작성
+    const sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?, ?)';
+    db.get().query(sql, [disclosure, content, roadname, userid, postdate], (err, result) => {
+        if(err) {
+            console.error(err);
+            res.status(500).send('Internal Server Error');
+        } else {
+            postingid = result.postingid;
+            res.send('글쓰기 성공');
+        }
+    });
+
+    const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
+    db.get().query(picturesql, [userId, pictureid[pictureid.length - 1], originalname, uploadDate, extension[extension.length - 1], postingid], (err, result) => {
         if (err) {
             console.error(err);
             res.status(500).send('Internal Server Error');
