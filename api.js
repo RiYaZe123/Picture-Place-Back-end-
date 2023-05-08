@@ -257,7 +257,7 @@ app.delete('/api/users', authenticateToken, (req, res) => {
     }
 });
 
-app.post('/api/upload', authenticateToken, upload.single('photo')), (req, res) => {
+app.post('/api/upload', authenticateToken, upload.single('photo'), (req, res) => {
     const file = req.file;
     //originalname : 업로드된 파일 원본 이름
     //path : 서버에 저장된 파일의 경로
@@ -274,4 +274,4 @@ app.post('/api/upload', authenticateToken, upload.single('photo')), (req, res) =
             res.send('File uploaded and saved to database');
         }
     });
-}
+});
