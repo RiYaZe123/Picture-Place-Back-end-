@@ -216,7 +216,7 @@ app.delete('/api/users', authenticateToken, (req, res) => {
 
     if(password){
         // 데이터 베이스 조회
-        sql = "select * from pinover.user where userid = ? limit 1;";
+        let sql = "select * from pinover.user where userid = ? limit 1;";
         db.get().query(sql, userid, function (err,  rows) {
             if (err) throw err;
             if(rows.length > 0) {
@@ -265,31 +265,29 @@ app.post('/api/upload', authenticateToken, upload.single('photo'), (req, res) =>
     const pictureid = path.split('\\');
     const extension = originalname.split('.');
     const userid = req.user;
-    const uploadDate = new Date();
+    const uploaddate = new Date();
     let postingid = 0;
-
     const { roadname, content, disclosure } = req.body;
-    const postdate = new Date();
 
     // 글 작성
-    const sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?, ?)';
-    db.get().query(sql, [disclosure, content, roadname, userid, postdate], (err, result) => {
+    let sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?);';
+    db.get().query(sql, [disclosure, content, roadname, userid, uploaddate], (err, result) => {
         if(err) {
             console.error(err);
             res.status(500).send('Internal Server Error');
         } else {
-            postingid = result.postingid;
-            res.send('글쓰기 성공');
+            postingid = result.insertId;
+            const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
+            db.get().query(picturesql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
+                if (err) {
+                    console.error(err);
+                    res.status(500).send('Internal Server Error');
+                } else {
+                    res.send('File uploaded and saved to database');
+                }
+            });
         }
     });
 
-    const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
-    db.get().query(picturesql, [userId, pictureid[pictureid.length - 1], originalname, uploadDate, extension[extension.length - 1], postingid], (err, result) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Internal Server Error');
-        } else {
-            res.send('File uploaded and saved to database');
-        }
-    });
+    
 });
