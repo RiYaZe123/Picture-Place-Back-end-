@@ -57,17 +57,17 @@ app.post('/api/login', (req, res) => {
                         res.json({ token });
                     } else {
                         const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
-                        res.status(401).json(error);
+                        res.status(400).json(error);
                     }
                 });
             } else {
                 const error = { "errorCode" : "U006", "message" : "아이디가 존재하지 않습니다."};
-                res.status(401).json(error);
+                res.status(400).json(error);
             }
         });
     } else {
         const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
-        res.status(401).json(error);
+        res.status(400).json(error);
     }
 });
 
@@ -136,7 +136,7 @@ app.post('/api/signup', (req, res) => {
                         db.get().query(sql, [userid, pw, name, address, hp, salt], function (err,  data) {
                             if (err) throw err;
                             else {
-                                res.send('회원가입이 완료되었습니다.');
+                                res.json({ "message" : "회원가입이 완료되었습니다." });
                             }
                         });
                     });
@@ -145,7 +145,7 @@ app.post('/api/signup', (req, res) => {
         });
     } else {
         const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
-        res.status(401).json(error);
+        res.status(400).json(error);
     }
 });
 
@@ -188,24 +188,24 @@ app.put('/api/users', authenticateToken, (req, res) => {
                                 db.get().query(sql, [pw, name, address, hp, salt, userid], function (err,  data) {
                                     if (err) throw err;
                                     else {
-                                        res.send('회원 정보 수정이 완료되었습니다.');
+                                        res.json({ "message" : "회원 정보 수정이 완료되었습니다." });
                                     }
                                 });
                             });
                         });
                     } else {
                         const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
-                        res.status(401).json(error);
+                        res.status(400).json(error);
                     }
                 });
             } else {
                 const error = { "errorCode" : "U006", "message" : "유저를 찾을 수 없습니다."};
-                res.status(401).json(error);
+                res.status(400).json(error);
             }
         });
     } else {
         const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
-        res.status(401).json(error);
+        res.status(400).json(error);
     }
 });
 
@@ -235,25 +235,25 @@ app.delete('/api/users', authenticateToken, (req, res) => {
                                 const index = tokens.indexOf(token);
                                 if (index !== -1) {
                                     tokens.splice(index, 1);
-                                    res.send('회원 탈퇴가 완료되었습니다.');
+                                    res.json({ "mesaage" : "회원 탈퇴가 완료되었습니다." });
+                                } else {
+                                    res.sendStatus(500);
                                 }
-                                else
-                                    res.sendStatus(401);
                             }
                         });
                     } else {
                         const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
-                        res.status(401).json(error);
+                        res.status(400).json(error);
                     }
                 });
             } else {
                 const error = { "errorCode" : "U006", "message" : "유저를 찾을 수 없습니다."};
-                res.status(401).json(error);
+                res.status(400).json(error);
             }
         });
     } else {
         const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
-        res.status(401).json(error);
+        res.status(400).json(error);
     }
 });
 
@@ -261,19 +261,18 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
     const files = req.files;
     //originalname : 업로드된 파일 원본 이름
     //path : 서버에 저장된 파일의 경로
-    //const {originalname, path} = file;
     const userid = req.user;
     const uploaddate = new Date();
     let postingid = 0;
     const { roadname, content, disclosure } = req.body;
-
     
     // 글 작성
-    let sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?);';
+    const sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?);';
     db.get().query(sql, [disclosure, content, roadname, userid, uploaddate], (err, result) => {
         if(err) {
             console.error(err);
-            res.status(500).send('Internal Server Error');
+            const error = { "errorCode" : "U009", "message" : "데이터베이스에 핀을 등록하지 못했습니다."};
+            res.status(500).json(error);
         } else {
             postingid = result.insertId;
             files.forEach(function(file) { // 여러 개 이미지 업로드
@@ -284,14 +283,13 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
                     db.get().query(picturesql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
                         if (err) {
                             console.error(err);
-                            res.status(500).send('Internal Server Error');
+                            const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
+                            res.status(500).json(error);
                         } else if (path==files[files.length-1].path) {
-                            res.send('File uploaded and saved to database');
+                            res.json({ "message" : "핀 등록이 완료되었습니다." });
                         }
                     });
             });
         }
     });
-
-    
 });
