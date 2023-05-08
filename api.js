@@ -36,7 +36,7 @@ db.connect(function(err) {
         console.log('Unable to connect to MySQL');
         process.exit(1);
     }
-})
+});
 
 // 로그인
 app.post('/api/login', (req, res) => {
@@ -257,18 +257,17 @@ app.delete('/api/users', authenticateToken, (req, res) => {
     }
 });
 
-app.post('/api/upload', authenticateToken, upload.single('photo'), (req, res) => {
-    const file = req.file;
+app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) => {
+    const files = req.files;
     //originalname : 업로드된 파일 원본 이름
     //path : 서버에 저장된 파일의 경로
-    const {originalname, path} = file;
-    const pictureid = path.split('\\');
-    const extension = originalname.split('.');
+    //const {originalname, path} = file;
     const userid = req.user;
     const uploaddate = new Date();
     let postingid = 0;
     const { roadname, content, disclosure } = req.body;
 
+    
     // 글 작성
     let sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?);';
     db.get().query(sql, [disclosure, content, roadname, userid, uploaddate], (err, result) => {
@@ -277,14 +276,19 @@ app.post('/api/upload', authenticateToken, upload.single('photo'), (req, res) =>
             res.status(500).send('Internal Server Error');
         } else {
             postingid = result.insertId;
-            const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
-            db.get().query(picturesql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
-                if (err) {
-                    console.error(err);
-                    res.status(500).send('Internal Server Error');
-                } else {
-                    res.send('File uploaded and saved to database');
-                }
+            files.forEach(function(file) { // 여러 개 이미지 업로드
+                const {originalname, path} = file;
+                const pictureid = path.split('\\');
+                const extension = originalname.split('.');
+                const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
+                    db.get().query(picturesql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
+                        if (err) {
+                            console.error(err);
+                            res.status(500).send('Internal Server Error');
+                        } else if (path==files[files.length-1].path) {
+                            res.send('File uploaded and saved to database');
+                        }
+                    });
             });
         }
     });
