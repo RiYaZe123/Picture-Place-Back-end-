@@ -300,7 +300,8 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
     db.get().query(sql, [userid], (err, results) => {
         if(err) {
             console.error(err);
-            res.status(500).send('Internal Server Error');
+            const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+            res.status(500).json(error);
         } else {
             res.json(results);
         }
@@ -312,11 +313,12 @@ app.get('/api/search', (req, res) => {
 
     const sql = 'SELECT * FROM posting WHERE roadname LIKE ? AND disclosure != "비공개"';
     db.get().query(sql, [`%${searchTerm}%`], (err, results) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send('Internal Server Error');
-    } else {
-      res.json(results);
-    }
-  });
+        if (err) {
+          console.error(err);
+          const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+          res.status(500).json(error);
+        } else {
+          res.json(results);
+        }
+    });
 });
