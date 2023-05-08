@@ -2,11 +2,16 @@ const express = require('express');
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
 
+//https 모듈
 const https = require('https');
 const fs = require('fs');
+
+//업로드 미들웨어
+const upload = multer({dest: 'pictures/'});
 
 const app = express();
 const options = {
@@ -15,6 +20,7 @@ const options = {
   };
 
 app.use(bodyParser.json());
+
 
 // 토큰 배열
 const tokens = [];
@@ -250,3 +256,22 @@ app.delete('/api/users', authenticateToken, (req, res) => {
         res.status(401).json(error);
     }
 });
+
+app.post('/api/upload', authenticateToken, upload.single('photo')), (req, res) => {
+    const file = req.file;
+    //originalname : 업로드된 파일 원본 이름
+    //path : 서버에 저장된 파일의 경로
+    const {originalname, path} = file;
+    const userId = req.user;
+    const uploadDate = new Date();
+
+    const sql = 'INSERT INTO photos (userid, pictureid, picturepath, date) VALUES (?, ?, ?, ?)';
+    db.get().query(sql, [userId, originalname, path, uploadDate], (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).send('Internal Server Error');
+        } else {
+            res.send('File uploaded and saved to database');
+        }
+    });
+}
