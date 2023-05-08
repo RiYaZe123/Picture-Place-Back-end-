@@ -262,11 +262,14 @@ app.post('/api/upload', authenticateToken, upload.single('photo'), (req, res) =>
     //originalname : 업로드된 파일 원본 이름
     //path : 서버에 저장된 파일의 경로
     const {originalname, path} = file;
+    const pictureid = path.split('\\');
+    const extension = originalname.split('.');
     const userId = req.user;
     const uploadDate = new Date();
+    const postingid = 0;
 
-    const sql = 'INSERT INTO photos (userid, pictureid, picturepath, date) VALUES (?, ?, ?, ?)';
-    db.get().query(sql, [userId, originalname, path, uploadDate], (err, result) => {
+    const sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
+    db.get().query(sql, [userId, pictureid[pictureid.length - 1], originalname, uploadDate, extension[extension.length - 1], postingid], (err, result) => {
         if (err) {
             console.error(err);
             res.status(500).send('Internal Server Error');
