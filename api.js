@@ -293,3 +293,30 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
         }
     });
 });
+
+app.get('/api/mypin', authenticateToken, (req, res) => {
+    const userid = req.user;
+    const sql = 'SELECT * FROM posting WHERE userid = ?';
+    db.get().query(sql, [userid], (err, results) => {
+        if(err) {
+            console.error(err);
+            res.status(500).send('Internal Server Error');
+        } else {
+            res.json(results);
+        }
+    });
+});
+
+app.get('/api/search', (req, res) => {
+    const searchTerm = req.query.q; // 쿼리 파라미터로 전달된 검색어
+
+    const sql = 'SELECT * FROM posting WHERE roadname LIKE ? AND disclosure != "비공개"';
+    db.get().query(sql, [`%${searchTerm}%`], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send('Internal Server Error');
+    } else {
+      res.json(results);
+    }
+  });
+});
