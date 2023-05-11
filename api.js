@@ -400,3 +400,191 @@ app.get('/api/picture/:pictureid', (req, res) => {
         }
     });
 });
+
+// 글 수정
+app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), (req, res) => {
+    const postingid = req.params.postingid;
+    const files = req.files;
+    const { disclosure, content, roadname } = req.body;
+    const userid = req.user;
+    const uploaddate = new Date();
+
+    const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
+    const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
+    const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
+
+    db.get().getConnection((err, connection) => { // 커넥션 가져오기
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: '내부 서버 오류' });
+        }
+
+        connection.beginTransaction((err) => { // 트랜잭션 시작
+            if (err) {
+                console.error(err);
+                connection.release(); // 커넥션 반환
+                return res.status(500).json({ message: '내부 서버 오류' });
+            }
+
+            // 게시물 조회
+            const selectPostingSql = "SELECT * FROM posting WHERE postingid = ?";
+            connection.query(selectPostingSql, [postingid], (err, result) => {
+                if (err) {
+                    console.error(err);
+                    connection.rollback(() => {
+                        connection.release(); // 커넥션 반환
+                        return res.status(500).json({ message: '내부 서버 오류' });
+                    });
+                }
+
+                if (result.length === 0) { // 글이 존재하지 않는 경우
+                    const error = { "errorCode": "U010", "message": "핀을 찾을 수 없습니다." };
+                    connection.release(); // 커넥션 반환
+                    return res.status(404).json(error);
+                }
+
+                // 게시물 수정
+                connection.query(updatePostingSql, [disclosure, content, roadname, postingid], (err, result) => {
+                    if (err) {
+                        console.error(err);
+                        connection.rollback(() => {
+                            connection.release(); // 커넥션 반환
+                            return res.status(500).json({ message: '내부 서버 오류' });
+                        });
+                    }
+
+                    // 기존 사진 삭제
+                    connection.query(deletePictureSql, [postingid], (err, result) => {
+                        if (err) {
+                            console.error(err);
+                            connection.rollback(() => {
+                                connection.release(); // 커넥션 반환
+                                return res.status(500).json({ message: '내부 서버 오류' });
+                            });
+                        }
+
+                        // 새로운 사진 추가
+                        const picturePromises = files.map(file => {
+                            const { originalname, path } = file;
+                            const pictureid = path.split('\\');
+                            const extension = originalname.split('.');
+                            return new Promise((resolve, reject) => {
+                                connection.query(insertPictureSql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
+                                    if (err) {
+                                        reject(err);
+                                    } else {
+                                        resolve();
+                                    }
+                                });
+                            });
+                        });
+
+                        Promise.all(picturePromises)
+                            .then(() => {
+                                connection.commit((err) => { // 트랜잭션 커밋
+                                    if (err) {
+                                        console.error(err);
+                                        connection.rollback(() => {
+                                            connection.release(); // 커넥션 반환
+                                            return res.status(500).json({ message: '내부 서버 오류' });
+                                        });
+                                    } else {
+                                        connection.release(); // 커넥션 반환
+                                        return res.status(200).json({ message: '게시물이 수정되었습니다.' });
+                                    }
+                                });
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                connection.rollback(() => {
+                                    connection.release(); // 커넥션 반환
+                                    return res.status(500).json({ message: '내부 서버 오류' });
+                                });
+                            });
+                    });
+                });
+            });
+        });
+    });
+});
+  
+// 글 삭제
+app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
+    const postingid = req.params.postingid;
+
+    const deletePostingSql = "DELETE FROM posting WHERE postingid = ?";
+    const deletePictureSql = "DELETE FROM picture WHERE postingid = ?";
+
+    db.get().getConnection((err, connection) => { // 커넥션 가져오기
+        if (err) {
+            console.error(err);
+            return res.status(500).send('Internal Server Error');
+        }
+
+        connection.beginTransaction((err) => { // 트랜잭션 시작
+            if (err) {
+                console.error(err);
+                return res.status(500).send('Internal Server Error');
+            }
+
+            // 게시물 조회
+            const selectPostingSql = "SELECT * FROM posting WHERE postingid = ?";
+            connection.query(selectPostingSql, [postingid], (err, result) => {
+                if (err) {
+                    connection.rollback(() => {
+                        console.error(err);
+                        return res.status(500).send('Internal Server Error');
+                    });
+                    connection.release(); // 커넥션 반환
+                    return;
+                }
+
+                if (result.length === 0) { // 글이 존재하지 않는 경우
+                    const error = { "errorCode": "U010", "message": "핀을 찾을 수 없습니다." };
+                    res.status(404).json(error);
+                    connection.release(); // 커넥션 반환
+                    return;
+                }
+
+                // 게시물 삭제
+                connection.query(deletePostingSql, [postingid], (err, result) => {
+                    if (err) {
+                        connection.rollback(() => {
+                            console.error(err);
+                            return res.status(500).send('Internal Server Error');
+                        });
+                        connection.release(); // 커넥션 반환
+                        return;
+                    }
+
+                    // 사진 삭제
+                    connection.query(deletePictureSql, [postingid], (err, result) => {
+                        if (err) {
+                            connection.rollback(() => {
+                                console.error(err);
+                                return res.status(500).send('Internal Server Error');
+                            });
+                            connection.release(); // 커넥션 반환
+                            return;
+                        }
+
+                        connection.commit((err) => { // 트랜잭션 커밋
+                            if (err) {
+                                connection.rollback(() => {
+                                    console.error(err);
+                                    return res.status(500).send('Internal Server Error');
+                                });
+                            } else {
+                                connection.release(); // 커넥션 반환
+                                res.send('게시물이 삭제되었습니다.');
+                            }
+                        });
+                    });
+                });
+            });
+        });
+    });
+});
+
+
+
