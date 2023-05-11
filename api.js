@@ -429,8 +429,6 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
         });
     });
 });
-
-
   
 // 글 삭제
 app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
@@ -510,6 +508,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
     });
 });
 
+/*
 // 장소 등록
 app.post('/api/location', (req, res) => {
     const { roadname, roadnumber, latitude, longitude, locationhp } = req.body;
@@ -569,7 +568,7 @@ app.get('/api/location', (req, res) => {
         });
     });
 });
-
+*/
 
 
 
