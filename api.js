@@ -452,7 +452,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
     const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
     const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
     const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
-    const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
+    const insert_picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
 
     db.get().getConnection((err, connection) => { // 커넥션 가져오기
         if (err) {
@@ -521,8 +521,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
 
                         // 새로운 사진 추가
                         let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid] );
-                        const picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
-                        db.get().query(picture_sql, [picture_array], (err, result) => {
+                        db.get().query(insert_picture_sql, [picture_array], (err, result) => {
                             if (err) {
                                 console.error(err);
                                 const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
