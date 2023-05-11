@@ -16,7 +16,7 @@ const upload = multer({dest: 'pictures/'});
 const app = express();
 const options = {
     key: fs.readFileSync("./config/www.picplace.kro.kr-key.pem"),
-    cert: fs.readFileSync("./config/www.picplace.kro.kr-crt.pem")
+    cert: fs.readFileSync("./config/www.picplace.kro.kr-chain.pem")
   };
 
 app.use(bodyParser.json());
