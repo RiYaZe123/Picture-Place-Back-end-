@@ -432,7 +432,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
     const uploaddate = new Date();
 
     const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
-    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
+    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=? AND userid=?;';
     const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
     const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
 
@@ -451,7 +451,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
 
             // 게시물 조회
             const selectPostingSql = "SELECT * FROM posting WHERE postingid = ?";
-            connection.query(selectPostingSql, [postingid], (err, result) => {
+            connection.query(selectPostingSql, [postingid, userid], (err, result) => {
                 if (err) {
                     console.error(err);
                     connection.rollback(() => {
@@ -548,6 +548,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
 // 글 삭제
 app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
     const postingid = req.params.postingid;
+    const userid = req.user;
 
     const deletePostingSql = "DELETE FROM posting WHERE postingid = ?";
     const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
@@ -566,8 +567,8 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
             }
 
             // 게시물 조회
-            const selectPostingSql = "SELECT * FROM posting WHERE postingid = ?";
-            connection.query(selectPostingSql, [postingid], (err, result) => {
+            const selectPostingSql = "SELECT * FROM posting WHERE postingid = ? AND userid=?";
+            connection.query(selectPostingSql, [postingid, userid], (err, result) => {
                 if (err) {
                     connection.rollback(() => {
                         console.error(err);
