@@ -303,7 +303,7 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
             res.status(500).json(error);
-        } else {
+        } else if (postingresults.length > 0) {
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
             const sql = 'SELECT * FROM picture WHERE postingid IN ?';
             const sqlParams = [postingIds];
@@ -327,6 +327,9 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
                     res.json(postingresults);
                 }
             });
+        } else {
+            const error = { "errorCode" : "U010", "message" : "DB 검색 결과가 없습니다."};
+            res.status(400).json(error);
         }
     });
 });
@@ -340,7 +343,7 @@ app.get('/api/search', (req, res) => {
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
             res.status(500).json(error);
-        } else {
+        } else if (postingresults.length > 0) {
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
             const sql = 'SELECT * FROM picture WHERE postingid IN ?';
             const sqlParams = [postingIds];
@@ -363,6 +366,9 @@ app.get('/api/search', (req, res) => {
                     res.json(postingresults);
                 }
             });
+        } else {
+            const error = { "errorCode" : "U010", "message" : "DB 검색 결과가 없습니다."};
+            res.status(400).json(error);
         }
     });
 });
