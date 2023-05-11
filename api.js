@@ -429,6 +429,8 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
         });
     });
 });
+
+
   
 // 글 삭제
 app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
@@ -507,6 +509,68 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
         });
     });
 });
+
+// 장소 등록
+app.post('/api/location', (req, res) => {
+    const { roadname, roadnumber, latitude, longitude, locationhp } = req.body;
+
+    const insertLocationSql = 'INSERT INTO location (roadname, roadnumber, latitude, longitude, locationhp) VALUES (?, ?, ?, ?, ?)';
+
+    db.get().getConnection((err, connection) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: '내부 서버 오류' });
+        }
+
+        connection.query(insertLocationSql, [roadname, roadnumber, latitude, longitude, locationhp], (err, result) => {
+            connection.release(); // 커넥션 반환
+
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: '내부 서버 오류' });
+            }
+
+            return res.status(200).json({ message: '장소가 등록되었습니다.' });
+        });
+    });
+});
+
+// 장소 검색
+app.get('/api/location', (req, res) => {
+    const { roadname, roadnumber } = req.query;
+
+    let searchLocationSql = 'SELECT * FROM location WHERE 1=1';
+
+    const queryParams = [];
+
+    if (roadname) {
+        searchLocationSql += ' AND roadname LIKE ?';
+        queryParams.push(`%${roadname}%`);
+    }
+
+    if (roadnumber) {
+        searchLocationSql += ' AND roadnumber LIKE ?';
+        queryParams.push(`%${roadnumber}%`);
+    }
+
+    db.get().getConnection((err, connection) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: '내부 서버 오류' });
+        }
+
+        connection.query(searchLocationSql, queryParams, (err, result) => {
+            connection.release(); // 커넥션 반환
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: '내부 서버 오류' });
+            }
+            return res.status(200).json(result);
+        });
+    });
+});
+
+
 
 
 
