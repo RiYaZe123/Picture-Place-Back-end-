@@ -5,8 +5,6 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
-const mysql = require('mysql');
-const path = require('path');
 
 //https 모듈
 const https = require('https');
