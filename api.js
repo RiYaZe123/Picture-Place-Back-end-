@@ -286,26 +286,23 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 핀을 등록하지 못했습니다."};
             res.status(500).json(error);
-        } else {
+        } else if (files.length > 0) {
             postingid = result.insertId;
-            files.forEach(function(file) { // 여러 개 이미지 업로드
-                const originalname = file.originalname;
-                const img_path = file.path;
-                console.log(originalname);
-                const pictureid = img_path.split(path.sep);
-                console.log(pictureid);
-                const extension = originalname.split('.');
-                const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
-                    db.get().query(picturesql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
-                        if (err) {
-                            console.error(err);
-                            const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
-                            res.status(500).json(error);
-                        } else if (img_path==files[files.length-1].path) {
-                            res.json({ "message" : "핀 등록이 완료되었습니다." });
-                        }
-                    });
+            let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid] );
+
+            const picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
+            db.get().query(picture_sql, [picture_array], (err, result) => {
+                if (err) {
+                    console.error(err);
+                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
+                    res.status(500).json(error);
+                } else {
+                    res.json({ "message" : "핀 등록이 완료되었습니다." });
+                }
             });
+        } else {
+            const error = { "errorCode" : "U011", "message" : "이미지 업로드를 실패했습니다."};
+            res.status(400).json(error);
         }
     });
 });
@@ -402,7 +399,7 @@ app.get('/api/picture/:pictureid', (req, res) => {
                 if(err) {
                     console.error(err);
                 } else {
-                    res.writeHead(200, { "Context-Type": "image/" + results[0].extension});
+                    res.writeHead(200, { "Context-Type": results[0].extension});
                     res.write(data);
                     res.end();
                 }
@@ -523,20 +520,16 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                         }
 
                         // 새로운 사진 추가
-                        const picturePromises = files.map(file => {
-                            const originalname = file.originalname;
-                            const img_path = file.path;
-                            const pictureid = img_path.split(path.sep);
-                            const extension = originalname.split('.');
-                            return new Promise((resolve, reject) => {
-                                connection.query(insertPictureSql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
-                                    if (err) {
-                                        reject(err);
-                                    } else {
-                                        resolve();
-                                    }
-                                });
-                            });
+                        let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid] );
+                        const picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
+                        db.get().query(picture_sql, [picture_array], (err, result) => {
+                            if (err) {
+                                console.error(err);
+                                const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
+                                res.status(500).json(error);
+                            } else {
+                                res.json({ "message" : "핀 등록이 완료되었습니다." });
+                            }
                         });
 
                         Promise.all(picturePromises)
