@@ -6,6 +6,7 @@ const multer = require('multer');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
 const mysql = require('mysql');
+const path = require('path');
 
 //https 모듈
 const https = require('https');
@@ -288,8 +289,11 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
         } else {
             postingid = result.insertId;
             files.forEach(function(file) { // 여러 개 이미지 업로드
-                const {originalname, path} = file;
-                const pictureid = path.split('\\');
+                const originalname = file.originalname;
+                const img_path = file.path;
+                console.log(originalname);
+                const pictureid = img_path.split(path.sep);
+                console.log(pictureid);
                 const extension = originalname.split('.');
                 const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
                     db.get().query(picturesql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
@@ -297,7 +301,7 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
                             console.error(err);
                             const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
                             res.status(500).json(error);
-                        } else if (path==files[files.length-1].path) {
+                        } else if (img_path==files[files.length-1].path) {
                             res.json({ "message" : "핀 등록이 완료되었습니다." });
                         }
                     });
@@ -449,7 +453,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
     const uploaddate = new Date();
 
     const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
-    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=? AND userid=?;';
+    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
     const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
     const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
 
@@ -492,9 +496,10 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                             return res.status(500).json({ message: '내부 서버 오류' });
                         });
                     }
+                    
 
                     //서버에서 기존 사진 삭제
-                    connection.query(selectPictureSql, [postingid], (err, result) => {
+                    connection.query(selectPictureSql, postingid, (err, result) => {
                         if(result.length > 0){
                             result.forEach(function(picture){
                                 file = './pictures/' + picture.pictureid;
@@ -519,8 +524,9 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
 
                         // 새로운 사진 추가
                         const picturePromises = files.map(file => {
-                            const { originalname, path } = file;
-                            const pictureid = path.split('\\');
+                            const originalname = file.originalname;
+                            const img_path = file.path;
+                            const pictureid = img_path.split(path.sep);
                             const extension = originalname.split('.');
                             return new Promise((resolve, reject) => {
                                 connection.query(insertPictureSql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
