@@ -304,16 +304,6 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
             res.status(500).json(error);
         } else {
-            /*
-            const sql = 'SELECT * FROM picture WHERE postingid = ?;';
-            let sqls = "";
-
-            postingresults.forEach(function(postingresult) {
-                let postingid = postingresult.postingid;
-                sqls += mysql.format(sql, postingid);
-            })
-            console.log(sqls);
-            */
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
             const sql = 'SELECT * FROM picture WHERE postingid IN ?';
             const sqlParams = [postingIds];
@@ -361,7 +351,6 @@ app.get('/api/search', (req, res) => {
                     const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
                     res.status(500).json(error);
                 } else if (pictureresults.length > 0) {
-                    console.log(pictureresults);
                     for(let i = 0; i<postingresults.length; i++) {
                         let picarr = new Array();
                         pictureresults.forEach(function(picture) {
@@ -401,6 +390,39 @@ app.get('/api/picture/:pictureid', (req, res) => {
     });
 });
 
+// 핀 수정을 위한 정보 불러오기
+app.get('/api/posting/:postingid', authenticateToken, (req, res) => {
+    const userid = req.user;
+    const postingid = req.params.postingid;
+    const selectPostingSql = 'SELECT * FROM posting WHERE userid = ? AND postingid = ?;';
+    const selectPictureSql = 'SELECT * FROM picture WHERE postingid = ?;';
+    db.get().query(selectPostingSql, [userid, postingid], (err, postingresult) => {
+        if(err) {
+            console.error(err);
+            const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+            res.status(500).json(error);
+        } else if (postingresult.length > 0) {
+            db.get().query(selectPictureSql, postingid, (err, pictureresults) => {
+                if(err) {
+                    console.error(err);
+                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+                    res.status(500).json(error);
+                } else if (pictureresults.length > 0) {
+                    let picarr = new Array();
+                    pictureresults.forEach(function(picture) {
+                        picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                    });
+                    postingresult[0].pictures = picarr;
+                    res.json(postingresult);
+                }
+            });
+        } else {
+            const error = { "errorCode" : "U010", "message" : "핀을 찾을 수 없습니다."};
+            res.status(404).json(error);
+        }
+    });
+});
+
 // 글 수정
 app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), (req, res) => {
     const postingid = req.params.postingid;
@@ -410,6 +432,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
     const uploaddate = new Date();
 
     const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
+    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
     const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
     const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
 
@@ -453,7 +476,21 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                         });
                     }
 
-                    // 기존 사진 삭제
+                    //서버에서 기존 사진 삭제
+                    connection.query(selectPictureSql, [postingid], (err, result) => {
+                        if(result.length > 0){
+                            result.forEach(function(picture){
+                                file = './pictures/' + picture.pictureid;
+                                fs.unlink(file, function(err){
+                                    if(err) {
+                                        console.log(err);
+                                    }
+                                });
+                            });
+                        }
+                    });
+
+                    // 데이터베이스에서 기존 사진 삭제
                     connection.query(deletePictureSql, [postingid], (err, result) => {
                         if (err) {
                             console.error(err);
@@ -513,6 +550,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
     const postingid = req.params.postingid;
 
     const deletePostingSql = "DELETE FROM posting WHERE postingid = ?";
+    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
     const deletePictureSql = "DELETE FROM picture WHERE postingid = ?";
 
     db.get().getConnection((err, connection) => { // 커넥션 가져오기
@@ -557,7 +595,21 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
                         return;
                     }
 
-                    // 사진 삭제
+                    //서버에서 사진 삭제
+                    connection.query(selectPictureSql, [postingid], (err, result) => {
+                        if(result.length > 0){
+                            result.forEach(function(picture){
+                                file = './pictures/' + picture.pictureid;
+                                fs.unlink(file, function(err){
+                                    if(err) {
+                                        console.log(err);
+                                    }
+                                });
+                            });
+                        }
+                    });
+
+                    // 데이터베이스에서 사진 삭제
                     connection.query(deletePictureSql, [postingid], (err, result) => {
                         if (err) {
                             connection.rollback(() => {
