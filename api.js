@@ -16,8 +16,8 @@ const upload = multer({dest: 'pictures/'});
 
 const app = express();
 const options = {
-    key: fs.readFileSync("./config/cert.key"),
-    cert: fs.readFileSync("./config/cert.crt")
+    key: fs.readFileSync("./config/www.picplace.kro.kr-key.pem"),
+    cert: fs.readFileSync("./config/www.picplace.kro.kr-crt.pem")
   };
 
 app.use(bodyParser.json());
@@ -27,8 +27,8 @@ app.use(bodyParser.json());
 const tokens = [];
 
 // 서버 시작
-https.createServer(options, app).listen(3001, () => {
-    console.log('Start HTTPS Server : localhost:3001');
+https.createServer(options, app).listen(443, () => {
+    console.log('Start HTTPS Server : localhost:443');
 });
 
 // 데이터 베이스 연결
