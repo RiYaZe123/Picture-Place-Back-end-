@@ -557,13 +557,13 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
     db.get().getConnection((err, connection) => { // 커넥션 가져오기
         if (err) {
             console.error(err);
-            return res.status(500).send('Internal Server Error');
+            return res.status(500).json({ message: '내부 서버 오류' });
         }
 
         connection.beginTransaction((err) => { // 트랜잭션 시작
             if (err) {
                 console.error(err);
-                return res.status(500).send('Internal Server Error');
+                return res.status(500).json({ message: '내부 서버 오류' });
             }
 
             // 게시물 조회
@@ -572,7 +572,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
                 if (err) {
                     connection.rollback(() => {
                         console.error(err);
-                        return res.status(500).send('Internal Server Error');
+                        return res.status(500).json({ message: '내부 서버 오류' });
                     });
                     connection.release(); // 커넥션 반환
                     return;
@@ -590,7 +590,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
                     if (err) {
                         connection.rollback(() => {
                             console.error(err);
-                            return res.status(500).send('Internal Server Error');
+                            return res.status(500).json({ message: '내부 서버 오류' });
                         });
                         connection.release(); // 커넥션 반환
                         return;
@@ -615,7 +615,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
                         if (err) {
                             connection.rollback(() => {
                                 console.error(err);
-                                return res.status(500).send('Internal Server Error');
+                                return res.status(500).json({ message: '내부 서버 오류' });
                             });
                             connection.release(); // 커넥션 반환
                             return;
@@ -625,7 +625,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
                             if (err) {
                                 connection.rollback(() => {
                                     console.error(err);
-                                    return res.status(500).send('Internal Server Error');
+                                    return res.status(500).json({ message: '내부 서버 오류' });
                                 });
                             } else {
                                 connection.release(); // 커넥션 반환
