@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
+const mysql = require('mysql');
 
 //https 모듈
 const https = require('https');
@@ -297,13 +298,45 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
 app.get('/api/mypin', authenticateToken, (req, res) => {
     const userid = req.user;
     const sql = 'SELECT * FROM posting WHERE userid = ?';
-    db.get().query(sql, [userid], (err, results) => {
+    db.get().query(sql, [userid], (err, postingresults) => {
         if(err) {
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
             res.status(500).json(error);
         } else {
-            res.json(results);
+            /*
+            const sql = 'SELECT * FROM picture WHERE postingid = ?;';
+            let sqls = "";
+
+            postingresults.forEach(function(postingresult) {
+                let postingid = postingresult.postingid;
+                sqls += mysql.format(sql, postingid);
+            })
+            console.log(sqls);
+            */
+            const postingIds = postingresults.map(postingresult => postingresult.postingid);
+            const sql = 'SELECT * FROM picture WHERE postingid IN ?';
+            const sqlParams = [postingIds];
+
+            db.get().query(sql, [sqlParams], (err, pictureresults) => {
+                if(err) {
+                    console.error(err);
+                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+                    res.status(500).json(error);
+                } else if (pictureresults.length > 0) {
+                    console.log(pictureresults);
+                    for(let i = 0; i<postingresults.length; i++) {
+                        let picarr = new Array();
+                        pictureresults.forEach(function(picture) {
+                            if(postingresults[i].postingid == picture.postingid){
+                                picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                            }
+                        });
+                        postingresults[i].pictures = picarr;
+                    }
+                    res.json(postingresults);
+                }
+            });
         }
     });
 });
@@ -312,13 +345,58 @@ app.get('/api/search', (req, res) => {
     const searchTerm = req.query.q; // 쿼리 파라미터로 전달된 검색어
 
     const sql = 'SELECT * FROM posting WHERE roadname LIKE ? AND disclosure != "비공개"';
-    db.get().query(sql, [`%${searchTerm}%`], (err, results) => {
+    db.get().query(sql, [`%${searchTerm}%`], (err, postingresults) => {
         if (err) {
-          console.error(err);
-          const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
-          res.status(500).json(error);
+            console.error(err);
+            const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+            res.status(500).json(error);
         } else {
-          res.json(results);
+            const postingIds = postingresults.map(postingresult => postingresult.postingid);
+            const sql = 'SELECT * FROM picture WHERE postingid IN ?';
+            const sqlParams = [postingIds];
+
+            db.get().query(sql, [sqlParams], (err, pictureresults) => {
+                if(err) {
+                    console.error(err);
+                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+                    res.status(500).json(error);
+                } else if (pictureresults.length > 0) {
+                    console.log(pictureresults);
+                    for(let i = 0; i<postingresults.length; i++) {
+                        let picarr = new Array();
+                        pictureresults.forEach(function(picture) {
+                            if(postingresults[i].postingid == picture.postingid){
+                                picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                            }
+                        });
+                        postingresults[i].pictures = picarr;
+                    }
+                    res.json(postingresults);
+                }
+            });
+        }
+    });
+});
+
+app.get('/api/picture/:pictureid', (req, res) => {
+    const { pictureid } = req.params;
+    const sql = 'SELECT * FROM picture WHERE pictureid = ?';
+    db.get().query(sql, pictureid, (err, results) => {
+        if(err) {
+            console.error(err);
+            const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+            res.status(500).json(error);
+        } else {
+            let filename = "./pictures/"+results[0].pictureid;
+            fs.readFile(filename,  function (err, data) {
+                if(err) {
+                    console.error(err);
+                } else {
+                    res.writeHead(200, { "Context-Type": "image/" + results[0].extension});
+                    res.write(data);
+                    res.end();
+                }
+            });
         }
     });
 });
