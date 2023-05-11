@@ -22,13 +22,24 @@ const options = {
 
 app.use(bodyParser.json());
 
+// 실제 서버 구동 여부 true: 서버, false: 로컬
+const prod = false;
+let server_url;
+let picture_url;
+if(prod) {
+    server_url = 'www.picplace.kro.kr';
+    picture_url = 'https://www.picplace.kro.kr/api/picture/';
+} else {
+    server_url = 'localhost';
+    picture_url = 'https://localhost/api/picture/';
+}
 
 // 토큰 배열
 const tokens = [];
 
 // 서버 시작
 https.createServer(options, app).listen(443, () => {
-    console.log('Start HTTPS Server : localhost:443');
+    console.log('Start HTTPS Server : ' + server_url);
 });
 
 // 데이터 베이스 연결
@@ -319,7 +330,7 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
                         let picarr = new Array();
                         pictureresults.forEach(function(picture) {
                             if(postingresults[i].postingid == picture.postingid){
-                                picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                                picarr.push(picture_url + picture.pictureid);
                             }
                         });
                         postingresults[i].pictures = picarr;
@@ -358,7 +369,7 @@ app.get('/api/search', (req, res) => {
                         let picarr = new Array();
                         pictureresults.forEach(function(picture) {
                             if(postingresults[i].postingid == picture.postingid){
-                                picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                                picarr.push(picture_url + picture.pictureid);
                             }
                         });
                         postingresults[i].pictures = picarr;
@@ -416,7 +427,7 @@ app.get('/api/posting/:postingid', authenticateToken, (req, res) => {
                 } else if (pictureresults.length > 0) {
                     let picarr = new Array();
                     pictureresults.forEach(function(picture) {
-                        picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                        picarr.push(picture_url + picture.pictureid);
                     });
                     postingresult[0].pictures = picarr;
                     res.json(postingresult);
