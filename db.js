@@ -4,7 +4,7 @@ var pool;
 exports.connect = function() {
     pool = mysql.createPool({
         connectionLimit : 10,
-        host            : 'pinoverdb.ddns.net',
+        host            : 'www.picplace.kro.kr',
         port            : '41000',
         user            : 'pinover',
         password        : '1234',
