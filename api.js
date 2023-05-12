@@ -17,9 +17,10 @@ const app = express();
 const options = {
     key: fs.readFileSync("./config/www.picplace.kro.kr-key.pem"),
     cert: fs.readFileSync("./config/www.picplace.kro.kr-chain.pem")
-  };
+};
 
-  app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: false}));
 
 // 실제 서버 구동 여부 true: 서버, false: 로컬
 const prod = false;
