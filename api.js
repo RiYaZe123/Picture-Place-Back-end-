@@ -18,10 +18,9 @@ const app = express();
 const options = {
     key: fs.readFileSync("./config/cert.key"),
     cert: fs.readFileSync("./config/cert.crt")
-  };
+};
 
 app.use(bodyParser.json());
-
 
 // 토큰 배열
 const tokens = [];
@@ -629,7 +628,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
                                 });
                             } else {
                                 connection.release(); // 커넥션 반환
-                                res.send('게시물이 삭제되었습니다.');
+                                return res.status(200).json({ message: '게시물이 삭제되었습니다.' });
                             }
                         });
                     });
