@@ -374,6 +374,11 @@ app.get('/api/search', (req, res) => {
                         postingresults[i].pictures = picarr;
                     }
                     res.json(postingresults);
+                } else {
+                    for(let i = 0; i<postingresults.length; i++) {
+                        postingresults[i].pictures = "";
+                    }
+                    res.json(postingresults);
                 }
             });
         } else {
@@ -450,7 +455,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
     const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
     const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
     const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
-    const insert_picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
+    const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
 
     db.get().getConnection((err, connection) => { // 커넥션 가져오기
         if (err) {
@@ -520,11 +525,10 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                         // 새로운 사진 추가
                         const picturePromises = files.map(file => {
                             const originalname = file.originalname;
-                            const img_path = file.path;
-                            const pictureid = img_path.split(path.sep);
-                            const extension = originalname.split('.');
+                            const pictureid = file.filename;
+                            const extension = file.mimetype;
                             return new Promise((resolve, reject) => {
-                                connection.query(insertPictureSql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
+                                connection.query(insertPictureSql, [userid, pictureid, originalname, uploaddate, extension, postingid], (err, result) => {
                                     if (err) {
                                         reject(err);
                                     } else {
@@ -647,7 +651,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
                                 });
                             } else {
                                 connection.release(); // 커넥션 반환
-                                return res.status(200).json({ message: '게시물이 삭제되었습니다.' });
+                                res.send('게시물이 삭제되었습니다.');
                             }
                         });
                     });
