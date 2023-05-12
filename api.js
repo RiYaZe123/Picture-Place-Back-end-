@@ -94,13 +94,13 @@ function authenticateToken(req, res, next) {
     // tokens 배열에서 현재 요청에 대한 인증 토큰이 있는지 확인
     if (!tokens.includes(token)) {
         return res.sendStatus(403);
+    } else {
+        jwt.verify(token, secretKey, (err, user) => {
+            if (err) return res.sendStatus(403);
+            req.user = user;
+            next();
+        });
     }
-
-    jwt.verify(token, secretKey, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
 }
 
 app.get('/api/protected', authenticateToken, (req, res) => {
@@ -118,9 +118,10 @@ app.post('/api/logout', authenticateToken, (req, res) => {
 
     // 로그인 토큰 삭제
     const index = tokens.indexOf(token);
-    if (index !== -1) tokens.splice(index, 1);
-
-    res.send('로그아웃 되었습니다.');
+    if (index !== -1) {
+        tokens.splice(index, 1);
+        res.send('로그아웃 되었습니다.');
+    }
 });
 
 // 회원가입
