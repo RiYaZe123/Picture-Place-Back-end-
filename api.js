@@ -518,15 +518,20 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                         }
 
                         // 새로운 사진 추가
-                        let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid] );
-                        db.get().query(insert_picture_sql, [picture_array], (err, result) => {
-                            if (err) {
-                                console.error(err);
-                                const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
-                                res.status(500).json(error);
-                            } else {
-                                res.json({ "message" : "핀 등록이 완료되었습니다." });
-                            }
+                        const picturePromises = files.map(file => {
+                            const originalname = file.originalname;
+                            const img_path = file.path;
+                            const pictureid = img_path.split(path.sep);
+                            const extension = originalname.split('.');
+                            return new Promise((resolve, reject) => {
+                                connection.query(insertPictureSql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
+                                    if (err) {
+                                        reject(err);
+                                    } else {
+                                        resolve();
+                                    }
+                                });
+                            });
                         });
 
                         Promise.all(picturePromises)
