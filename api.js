@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const db = require("./db"); // 데이터베이스
 const secretKey = 'my_secret_key';
-const mysql = require('mysql');
 
 //https 모듈
 const https = require('https');
@@ -16,18 +15,30 @@ const upload = multer({dest: 'pictures/'});
 
 const app = express();
 const options = {
-    key: fs.readFileSync("./config/cert.key"),
-    cert: fs.readFileSync("./config/cert.crt")
-};
+    key: fs.readFileSync("./config/www.picplace.kro.kr-key.pem"),
+    cert: fs.readFileSync("./config/www.picplace.kro.kr-chain.pem")
+  };
 
 app.use(bodyParser.json());
+
+// 실제 서버 구동 여부 true: 서버, false: 로컬
+const prod = false;
+let server_url;
+let picture_url;
+if(prod) {
+    server_url = 'www.picplace.kro.kr';
+    picture_url = 'https://www.picplace.kro.kr/api/picture/';
+} else {
+    server_url = 'localhost';
+    picture_url = 'https://localhost/api/picture/';
+}
 
 // 토큰 배열
 const tokens = [];
 
 // 서버 시작
-https.createServer(options, app).listen(3001, () => {
-    console.log('Start HTTPS Server : localhost:3001');
+https.createServer(options, app).listen(443, () => {
+    console.log('Start HTTPS Server : ' + server_url);
 });
 
 // 데이터 베이스 연결
@@ -273,23 +284,23 @@ app.post('/api/upload', authenticateToken, upload.array('photo', 5), (req, res) 
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 핀을 등록하지 못했습니다."};
             res.status(500).json(error);
-        } else {
+        } else if (files.length > 0) {
             postingid = result.insertId;
-            files.forEach(function(file) { // 여러 개 이미지 업로드
-                const {originalname, path} = file;
-                const pictureid = path.split('\\');
-                const extension = originalname.split('.');
-                const picturesql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
-                    db.get().query(picturesql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
-                        if (err) {
-                            console.error(err);
-                            const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
-                            res.status(500).json(error);
-                        } else if (path==files[files.length-1].path) {
-                            res.json({ "message" : "핀 등록이 완료되었습니다." });
-                        }
-                    });
+            let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid] );
+
+            const picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
+            db.get().query(picture_sql, [picture_array], (err, result) => {
+                if (err) {
+                    console.error(err);
+                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
+                    res.status(500).json(error);
+                } else {
+                    res.json({ "message" : "핀 등록이 완료되었습니다." });
+                }
             });
+        } else {
+            const error = { "errorCode" : "U011", "message" : "이미지 업로드를 실패했습니다."};
+            res.status(400).json(error);
         }
     });
 });
@@ -302,7 +313,7 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
             res.status(500).json(error);
-        } else {
+        } else if (postingresults.length > 0) {
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
             const sql = 'SELECT * FROM picture WHERE postingid IN ?';
             const sqlParams = [postingIds];
@@ -318,7 +329,7 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
                         let picarr = new Array();
                         pictureresults.forEach(function(picture) {
                             if(postingresults[i].postingid == picture.postingid){
-                                picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                                picarr.push(picture_url + picture.pictureid);
                             }
                         });
                         postingresults[i].pictures = picarr;
@@ -326,6 +337,9 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
                     res.json(postingresults);
                 }
             });
+        } else {
+            const error = { "errorCode" : "U010", "message" : "DB 검색 결과가 없습니다."};
+            res.status(400).json(error);
         }
     });
 });
@@ -339,7 +353,7 @@ app.get('/api/search', (req, res) => {
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
             res.status(500).json(error);
-        } else {
+        } else if (postingresults.length > 0) {
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
             const sql = 'SELECT * FROM picture WHERE postingid IN ?';
             const sqlParams = [postingIds];
@@ -354,7 +368,7 @@ app.get('/api/search', (req, res) => {
                         let picarr = new Array();
                         pictureresults.forEach(function(picture) {
                             if(postingresults[i].postingid == picture.postingid){
-                                picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                                picarr.push(picture_url + picture.pictureid);
                             }
                         });
                         postingresults[i].pictures = picarr;
@@ -362,6 +376,9 @@ app.get('/api/search', (req, res) => {
                     res.json(postingresults);
                 }
             });
+        } else {
+            const error = { "errorCode" : "U010", "message" : "DB 검색 결과가 없습니다."};
+            res.status(400).json(error);
         }
     });
 });
@@ -380,7 +397,7 @@ app.get('/api/picture/:pictureid', (req, res) => {
                 if(err) {
                     console.error(err);
                 } else {
-                    res.writeHead(200, { "Context-Type": "image/" + results[0].extension});
+                    res.writeHead(200, { "Context-Type": results[0].extension});
                     res.write(data);
                     res.end();
                 }
@@ -409,7 +426,7 @@ app.get('/api/posting/:postingid', authenticateToken, (req, res) => {
                 } else if (pictureresults.length > 0) {
                     let picarr = new Array();
                     pictureresults.forEach(function(picture) {
-                        picarr.push('https://localhost:3001/api/picture/' + picture.pictureid);
+                        picarr.push(picture_url + picture.pictureid);
                     });
                     postingresult[0].pictures = picarr;
                     res.json(postingresult);
@@ -431,9 +448,9 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
     const uploaddate = new Date();
 
     const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
-    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=? AND userid=?;';
+    const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
     const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
-    const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
+    const insert_picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
 
     db.get().getConnection((err, connection) => { // 커넥션 가져오기
         if (err) {
@@ -474,9 +491,10 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                             return res.status(500).json({ message: '내부 서버 오류' });
                         });
                     }
+                    
 
                     //서버에서 기존 사진 삭제
-                    connection.query(selectPictureSql, [postingid], (err, result) => {
+                    connection.query(selectPictureSql, postingid, (err, result) => {
                         if(result.length > 0){
                             result.forEach(function(picture){
                                 file = './pictures/' + picture.pictureid;
@@ -500,19 +518,15 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                         }
 
                         // 새로운 사진 추가
-                        const picturePromises = files.map(file => {
-                            const { originalname, path } = file;
-                            const pictureid = path.split('\\');
-                            const extension = originalname.split('.');
-                            return new Promise((resolve, reject) => {
-                                connection.query(insertPictureSql, [userid, pictureid[pictureid.length - 1], originalname, uploaddate, extension[extension.length - 1], postingid], (err, result) => {
-                                    if (err) {
-                                        reject(err);
-                                    } else {
-                                        resolve();
-                                    }
-                                });
-                            });
+                        let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid] );
+                        db.get().query(insert_picture_sql, [picture_array], (err, result) => {
+                            if (err) {
+                                console.error(err);
+                                const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
+                                res.status(500).json(error);
+                            } else {
+                                res.json({ "message" : "핀 등록이 완료되었습니다." });
+                            }
                         });
 
                         Promise.all(picturePromises)
