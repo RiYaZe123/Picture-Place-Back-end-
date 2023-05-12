@@ -117,10 +117,12 @@ app.post('/api/logout', authenticateToken, (req, res) => {
     }
 
     // 로그인 토큰 삭제
-    const index = tokens.indexOf(token);
+    let token2 = token.split(' ').reverse()[0];
+    const index = tokens.indexOf(token2);
     if (index !== -1) {
         tokens.splice(index, 1);
         res.send('로그아웃 되었습니다.');
+        console.log(tokens);
     }
 });
 
