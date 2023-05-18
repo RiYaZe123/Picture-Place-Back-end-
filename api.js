@@ -8,6 +8,7 @@ const db = require("./db"); // 데이터베이스
 const userRouter = require('./routes/user');
 const postRouter = require('./routes/posting');
 const reportRouter = require('./routes/report');
+const recommendRouter = require('./routes/recommend');
 const secretKey = 'my_secret_key';
 const refreshKey = 'my_refresh_key';
 
@@ -28,10 +29,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookie());
 
-// 회원가입
+// 라우터 설정
 app.use('/user', userRouter);
 app.use('/posting', postRouter);
 app.use('/report', reportRouter);
+app.use('/recommend', recommendRouter);
 
 // 실제 서버 구동 여부 true: 서버, false: 로컬
 const prod = false;
