@@ -1,10 +1,13 @@
 const express = require('express');
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
+const cookie = require("cookie-parser");
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const db = require("./db"); // 데이터베이스
+const userRouter = require('./routes/user');
 const secretKey = 'my_secret_key';
+const refreshKey = 'my_refresh_key';
 
 //https 모듈
 const https = require('https');
@@ -21,6 +24,10 @@ const options = {
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
+app.use(cookie());
+
+// 회원가입
+app.use('/user', userRouter);
 
 // 실제 서버 구동 여부 true: 서버, false: 로컬
 const prod = false;
@@ -50,38 +57,6 @@ db.connect(function(err) {
     }
 });
 
-// 로그인
-app.post('/api/login', (req, res) => {
-    const { userid, password } = req.body;
-
-    if(userid && password) { // 정보가 모두 입력되었는지 확인
-        // 데이터 베이스 조회
-        sql = "select * from pinover.user where userid = ? limit 1;";
-        db.get().query(sql, userid, function (err,  rows) {
-            if (err) throw err;
-            if(rows.length > 0) {
-                let user = rows[0];
-                crypto.pbkdf2(password, user.salt, 100000, 64, 'sha512', function(err, derivedKey){ // 패스워드 sha512 암호화, salt 사용
-                    if(err) throw err;
-                    if(derivedKey.toString('base64') === user.password){ // 암호화된 패스워드가 일치하는지 확인
-                        const token = jwt.sign(userid, secretKey); // 토큰 생성
-                        tokens.push(token); // 토큰 배열에 추가
-                        res.json({ token });
-                    } else {
-                        const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
-                        res.status(400).json(error);
-                    }
-                });
-            } else {
-                const error = { "errorCode" : "U006", "message" : "아이디가 존재하지 않습니다."};
-                res.status(400).json(error);
-            }
-        });
-    } else {
-        const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
-        res.status(400).json(error);
-    }
-});
 
 //인증이 필요한 요청에 대해 미들웨어 함수
 // 401 Unauthorized 응답은 클라이언트의 요청에 대해 인증 정보가 필요한데, 해당 정보가 없거나 잘못된 경우를 나타냅니다.
@@ -127,42 +102,6 @@ app.post('/api/logout', authenticateToken, (req, res) => {
     }
 });
 
-// 회원가입
-app.post('/api/signup', (req, res) => {
-    const { userid, password, name, address, hp } = req.body;
-    sql = "select * from pinover.user where userid = ? limit 1;";
-
-    if(userid && password && name && address && hp) { // 정보가 모두 입력되었는지 확인
-        // 데이터 베이스 조회
-        db.get().query(sql, userid, function (err,  rows) {
-            if (err) throw err;
-            if(rows.length > 0) {
-                const error = { "errorCode" : "U006", "message" : "이미 등록된 아이디입니다."};
-                res.status(409).json(error);
-            } else {
-                // 데이터 베이스에 추가
-                crypto.randomBytes(64, (err, buf) => { // salt 생성
-                    if (err) throw err;
-                    let salt = buf.toString('base64');
-                    crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, derivedKey) => { // 패스워드 sha512 암호화, salt 사용
-                        if (err) throw err;
-                        let pw = derivedKey.toString('base64');
-                        sql = "insert into user (userid, password, name, address, hp, salt) values (?, ?, ?, ?, ?, ?);";
-                        db.get().query(sql, [userid, pw, name, address, hp, salt], function (err,  data) {
-                            if (err) throw err;
-                            else {
-                                res.json({ "message" : "회원가입이 완료되었습니다." });
-                            }
-                        });
-                    });
-                });
-            }
-        });
-    } else {
-        const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
-        res.status(400).json(error);
-    }
-});
 
 // users/이름으로 검색
 // TO DO : 데이터 베이스로 전환
