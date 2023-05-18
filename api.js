@@ -715,7 +715,6 @@ app.post('/api/recommend', authenticateToken, (req, res) => {
                         const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
                         return res.status(500).json(error);
                     }
-    
                     const count = result[0].count;
                     res.json({ "count": count });
                 });
@@ -737,7 +736,6 @@ app.post('/api/recommend', authenticateToken, (req, res) => {
                         const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
                         return res.status(500).json(error);
                     }
-
                     const count = result[0].count;
                     res.json({ "count": count });
                 });
