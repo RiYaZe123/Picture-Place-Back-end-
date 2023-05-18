@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookie = require("cookie-parser");
-const db = require("./db"); // 데이터베이스
 const userRouter = require('./routes/user');
 const postRouter = require('./routes/posting');
 const reportRouter = require('./routes/report');
@@ -33,10 +32,10 @@ let server_url;
 let picture_url;
 if(prod) {
     server_url = 'www.picplace.kro.kr';
-    picture_url = 'https://www.picplace.kro.kr/api/picture/';
+    picture_url = 'https://www.picplace.kro.kr/posting/picture/';
 } else {
     server_url = 'localhost';
-    picture_url = 'https://localhost/api/picture/';
+    picture_url = 'https://localhost/posting/picture/';
 }
 
 // 서버 시작

@@ -2,7 +2,9 @@ const express = require('express');
 const db = require("../db"); // 데이터베이스
 const authenticateToken = require("../authenticateToken"); // 인증
 const multer = require('multer');
+const fs = require('fs');
 const router = express.Router();
+const picture_url = 'https://www.picplace.kro.kr/posting/picture/';
 
 //업로드 미들웨어
 const upload = multer({dest: 'pictures/'});
@@ -71,7 +73,6 @@ router.get('/mypin', authenticateToken, (req, res) => {
                     const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
                     res.status(500).json(error);
                 } else if (pictureresults.length > 0) {
-                    console.log(pictureresults);
                     for(let i = 0; i<postingresults.length; i++) {
                         let picarr = new Array();
                         pictureresults.forEach(function(picture) {
