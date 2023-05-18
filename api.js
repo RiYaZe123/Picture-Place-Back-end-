@@ -339,6 +339,11 @@ app.get('/api/mypin', authenticateToken, (req, res) => {
                         postingresults[i].pictures = picarr;
                     }
                     res.json(postingresults);
+                } else {
+                    for(let i = 0; i<postingresults.length; i++) {
+                        postingresults[i].pictures = "";
+                    }
+                    res.json(postingresults);
                 }
             });
         } else {
@@ -439,6 +444,9 @@ app.get('/api/posting/:postingid', authenticateToken, (req, res) => {
                     });
                     postingresult[0].pictures = picarr;
                     res.json(postingresult);
+                } else {
+                    postingresult.pictures = "";
+                    res.json(postingresults);
                 }
             });
         } else {
