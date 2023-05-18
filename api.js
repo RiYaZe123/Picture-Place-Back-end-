@@ -744,34 +744,6 @@ app.post('/api/recommend', authenticateToken, (req, res) => {
             });
         }
     });
-
-    if (cancel) {
-        // 추천 취소를 요청한 경우
-        const deleteSql = 'DELETE FROM recommand WHERE userid = ? AND postingid = ?;';
-        db.get().query(deleteSql, [userid, postingid], (err) => {
-            if (err) {
-                console.error(err);
-                const error = { "errorCode": "U016", "message": "추천을 취소하는 동안 오류가 발생했습니다." };
-                return res.status(500).json(error);
-            }
-
-            // 현재 게시글의 추천 수를 가져옵니다.
-            const countSql = 'SELECT COUNT(*) AS count FROM recommand WHERE postingid = ?;';
-            db.get().query(countSql, postingid, (err, result) => {
-                if (err) {
-                    console.error(err);
-                    const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
-                    return res.status(500).json(error);
-                }
-
-                const count = result[0].count;
-                res.json({ "count": count });
-            });
-        });
-    } else {
-        // 추천 추가를 요청한 경우
-        
-    }
 });
 
 // 클라이언트가 '신고' 버튼을 눌렀을 때 실행되는 핸들러
