@@ -686,8 +686,64 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
 
 // 클라이언트가 '추천' 버튼을 눌렀을 때 실행되는 핸들러
 app.post('/api/recommend', authenticateToken, (req, res) => {
-    const { postingid, cancel } = req.body;
+    const { postingid } = req.body;
     const userid = req.user;
+
+    const checkSql = 'SELECT * FROM recommand WHERE userid = ? AND postingid = ? LIMIT 1;';
+    db.get().query(checkSql, [userid, postingid], (err, rows) => {
+        if (err) {
+            console.error(err);
+            const error = { "errorCode": "U012", "message": "추천을 확인하는 동안 오류가 발생했습니다." };
+            return res.status(500).json(error);
+        }
+
+        if (rows.length > 0) {
+            // 추천 취소를 요청한 경우
+            const deleteSql = 'DELETE FROM recommand WHERE userid = ? AND postingid = ?;';
+            db.get().query(deleteSql, [userid, postingid], (err) => {
+                if (err) {
+                    console.error(err);
+                    const error = { "errorCode": "U016", "message": "추천을 취소하는 동안 오류가 발생했습니다." };
+                    return res.status(500).json(error);
+                }
+    
+                // 현재 게시글의 추천 수를 가져옵니다.
+                const countSql = 'SELECT COUNT(*) AS count FROM recommand WHERE postingid = ?;';
+                db.get().query(countSql, postingid, (err, result) => {
+                    if (err) {
+                        console.error(err);
+                        const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
+                        return res.status(500).json(error);
+                    }
+    
+                    const count = result[0].count;
+                    res.json({ "count": count });
+                });
+            });
+        } else {
+            // 추천을 추가합니다.
+            const insertSql = 'INSERT INTO recommand (userid, postingid) VALUES (?, ?);';
+            db.get().query(insertSql, [userid, postingid], (err) => {
+                if (err) {
+                    console.error(err);
+                    const error = { "errorCode": "U014", "message": "추천을 등록하는 동안 오류가 발생했습니다." };
+                    return res.status(500).json(error);
+                }
+                // 현재 게시글의 추천 수를 가져옵니다.
+                const countSql = 'SELECT COUNT(*) AS count FROM recommand WHERE postingid = ?;';
+                db.get().query(countSql, postingid, (err, result) => {
+                    if (err) {
+                        console.error(err);
+                        const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
+                        return res.status(500).json(error);
+                    }
+
+                    const count = result[0].count;
+                    res.json({ "count": count });
+                });
+            });
+        }
+    });
 
     if (cancel) {
         // 추천 취소를 요청한 경우
@@ -714,42 +770,7 @@ app.post('/api/recommend', authenticateToken, (req, res) => {
         });
     } else {
         // 추천 추가를 요청한 경우
-        const checkSql = 'SELECT * FROM recommand WHERE userid = ? AND postingid = ? LIMIT 1;';
-        db.get().query(checkSql, [userid, postingid], (err, rows) => {
-            if (err) {
-                console.error(err);
-                const error = { "errorCode": "U012", "message": "추천을 확인하는 동안 오류가 발생했습니다." };
-                return res.status(500).json(error);
-            }
-
-            if (rows.length > 0) {
-                // 이미 추천이 존재하는 경우
-                const error = { "errorCode": "U013", "message": "이미 추천한 게시글입니다." };
-                return res.status(400).json(error);
-            } else {
-                // 추천을 추가합니다.
-                const insertSql = 'INSERT INTO recommand (userid, postingid) VALUES (?, ?);';
-                db.get().query(insertSql, [userid, postingid], (err) => {
-                    if (err) {
-                        console.error(err);
-                        const error = { "errorCode": "U014", "message": "추천을 등록하는 동안 오류가 발생했습니다." };
-                        return res.status(500).json(error);
-                    }
-                    // 현재 게시글의 추천 수를 가져옵니다.
-                    const countSql = 'SELECT COUNT(*) AS count FROM recommand WHERE postingid = ?;';
-                    db.get().query(countSql, postingid, (err, result) => {
-                        if (err) {
-                            console.error(err);
-                            const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
-                            return res.status(500).json(error);
-                        }
-
-                        const count = result[0].count;
-                        res.json({ "count": count });
-                    });
-                });
-            }
-        });
+        
     }
 });
 
