@@ -587,8 +587,6 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
         });
     });
 });
-
-
   
 // 글 삭제
 app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
@@ -750,7 +748,7 @@ app.post('/api/report', authenticateToken, (req, res) => {
     const userid = req.user;
 
     // 해당 사용자와 게시글에 대한 신고가 이미 존재하는지 확인합니다.
-    const checkSql = 'SELECT * FROM declaration WHERE declarationid = ? AND postingid = ? LIMIT 1;';
+    const checkSql = 'SELECT * FROM declaration WHERE userid = ? AND postingid = ? LIMIT 1;';
     db.get().query(checkSql, [userid, postingid], (err, rows) => {
         if (err) {
             console.error(err);
@@ -764,7 +762,7 @@ app.post('/api/report', authenticateToken, (req, res) => {
             return res.status(400).json(error);
         } else {
             // 신고를 추가합니다.
-            const insertSql = 'INSERT INTO declaration (declarationid, postingid, declarationreason) VALUES (?, ?, ?);';
+            const insertSql = 'INSERT INTO declaration (userid, postingid, declarationreason) VALUES (?, ?, ?);';
             db.get().query(insertSql, [userid, postingid, declarationreason], (err) => {
                 if (err) {
                     console.error(err);
