@@ -3,6 +3,14 @@ const db = require("../db"); // 데이터베이스
 const authenticateToken = require("../authenticateToken"); // 인증
 const router = express.Router();
 
+// 데이터 베이스 연결
+db.connect(function(err) {
+    if(err) {
+        console.log('Unable to connect to MySQL');
+        process.exit(1);
+    }
+});
+
 // 클라이언트가 '추천' 버튼을 눌렀을 때 실행되는 핸들러
 router.post('/', authenticateToken, (req, res) => {
     const { postingid } = req.body;
