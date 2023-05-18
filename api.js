@@ -686,7 +686,7 @@ app.delete('/api/posting/:postingid', authenticateToken, (req, res) => {
 
 // 클라이언트가 '추천' 버튼을 눌렀을 때 실행되는 핸들러
 app.post('/api/recommend', authenticateToken, (req, res) => {
-    const { postingid } = req.body;
+    const { postingid, cancel } = req.body;
     const userid = req.user;
 
     if (cancel) {
@@ -802,7 +802,6 @@ app.post('/api/report', authenticateToken, (req, res) => {
                                 const error = { "errorCode": "U021", "message": "게시글을 비공개로 전환하는 동안 오류가 발생했습니다." };
                                 return res.status(500).json(error);
                             }
-
                             res.json({ "message": "게시글이 비공개로 전환되었습니다." });
                         });
                     } else {
