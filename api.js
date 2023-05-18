@@ -524,8 +524,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
                                 return res.status(500).json({ message: '내부 서버 오류' });
                             });
                         }
-                    
-
+                        
                         //서버에서 기존 사진 삭제
                         connection.query(selectPictureSql, postingid, (err, result) => {
                             if(result.length > 0){
