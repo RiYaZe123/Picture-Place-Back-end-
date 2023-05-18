@@ -457,7 +457,7 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
     const uploaddate = new Date();
 
     // 게시물의 현재 disclosure 상태를 확인합니다.
-    const checkDisclosureSql = 'SELECT disclosure FROM posting WHERE postingid = ?;';
+    const checkDisclosureSql = 'SELECT declaration FROM posting WHERE postingid = ?;';
     db.get().query(checkDisclosureSql, postingid, (err, result) => {
         if (err) {
             console.error(err);
@@ -465,10 +465,10 @@ app.put('/api/posting/:postingid', authenticateToken, upload.array('photo', 5), 
             return res.status(500).json(error);
         }
 
-        const currentDisclosure = result[0].disclosure;
+        const currentDeclaration = result[0].declaration;
 
-        if (currentDisclosure == "비공개(신고당한 게시물)") {
-            const error = { "errorCode": "U023", "message": "비공개(신고당한 게시물) 상태인 게시물은 수정할 수 없습니다." };
+        if (currentDeclaration == 1) {
+            const error = { "errorCode": "U023", "message": "신고당한 게시물 상태인 게시물은 수정할 수 없습니다." };
             return res.status(400).json(error);
         }
 
@@ -752,7 +752,7 @@ app.post('/api/report', authenticateToken, (req, res) => {
     const userid = req.user;
 
     // 해당 사용자와 게시글에 대한 신고가 이미 존재하는지 확인합니다.
-    const checkSql = 'SELECT * FROM declaration WHERE userid = ? AND postingid = ? LIMIT 1;';
+    const checkSql = 'SELECT * FROM declaration WHERE declarationid = ? AND postingid = ? LIMIT 1;';
     db.get().query(checkSql, [userid, postingid], (err, rows) => {
         if (err) {
             console.error(err);
@@ -766,7 +766,7 @@ app.post('/api/report', authenticateToken, (req, res) => {
             return res.status(400).json(error);
         } else {
             // 신고를 추가합니다.
-            const insertSql = 'INSERT INTO declaration (userid, postingid, declarationreason) VALUES (?, ?, ?);';
+            const insertSql = 'INSERT INTO declaration (declarationid, postingid, declarationreason) VALUES (?, ?, ?);';
             db.get().query(insertSql, [userid, postingid, declarationreason], (err) => {
                 if (err) {
                     console.error(err);
@@ -788,8 +788,8 @@ app.post('/api/report', authenticateToken, (req, res) => {
                     // 일정 이상의 신고 수를 확인하고, 비공개로 전환합니다.
                     const threshold = 3; // 일정 이상의 신고 수
                     if (count >= threshold) {
-                        const updateSql = 'UPDATE posting SET disclosure = ? WHERE postingid = ?;';
-                        db.get().query(updateSql, "비공개(신고당한 게시물)", postingid, (err) => {
+                        const updateSql = 'UPDATE posting SET declaration = ? WHERE postingid = ?;';
+                        db.get().query(updateSql, [1, postingid], (err) => {
                             if (err) {
                                 console.error(err);
                                 const error = { "errorCode": "U021", "message": "게시글을 비공개로 전환하는 동안 오류가 발생했습니다." };
