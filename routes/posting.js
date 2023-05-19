@@ -84,7 +84,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
                     }
 
                     // 현재 게시글의 추천 수를 가져옵니다.
-                    const countSql = 'SELECT COUNT(*) AS count FROM recommand WHERE postingid IN ?;';
+                    const countSql = 'SELECT postingid, COUNT(*) AS count FROM recommand WHERE postingid IN ? GROUP BY postingid;';
                     const countParams = [postingIds];
                     db.get().query(countSql, [countParams], (err, result) => {
                         if (err) {
@@ -92,7 +92,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
                             const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
                             return res.status(500).json(error);
                         }
-                        
+
                         const counts = result.reduce((acc, row) => {
                             acc[row.postingid] = row.count;
                             return acc;
