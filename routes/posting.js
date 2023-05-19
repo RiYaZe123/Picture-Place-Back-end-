@@ -93,7 +93,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
                             return res.status(500).json(error);
                         }
                         const counts = result.reduce((acc, row) => {
-                            acc[row.postingid] = row.count;
+                            acc[row.id] = row.count;
                             return acc;
                         }, {});
 
@@ -157,7 +157,7 @@ router.get('/search', (req, res) => {
                             return res.status(500).json(error);
                         }
                         const counts = result.reduce((acc, row) => {
-                            acc[row.postingid] = row.count;
+                            acc[row.id] = row.count;
                             return acc;
                         }, {});
 
