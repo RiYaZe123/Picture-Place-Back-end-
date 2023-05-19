@@ -71,35 +71,5 @@ router.get('/', (req, res) => {
     });
 });
 
-// 장소 수정
-router.put('/:locationId', authenticateToken, (req, res) => {
-    const locationId = req.params.locationId;
-    const { roadname, roadnumber, latitude, longitude, locationhp } = req.body;
-  
-    const updateLocationSql = 'UPDATE location SET roadname = ?, roadnumber = ?, latitude = ?, longitude = ?, locationhp = ? WHERE locationid = ?';
-  
-    db.get().getConnection((err, connection) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ "errorCode": "U022", "message": '장소 수정 접속 관련 서버 오류' });
-      }
-  
-      connection.query(updateLocationSql, [roadname, roadnumber, latitude, longitude, locationhp, locationId], (err, result) => {
-        connection.release(); // 커넥션 반환
-  
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ "errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
-        }
-  
-        if (result.affectedRows === 0) {
-          return res.status(404).json({ "errorCode": "U024", "message": '수정할 장소가 없습니다.' });
-        }
-  
-        return res.status(200).json({ message: '장소가 수정되었습니다.' });
-      });
-    });
-  });
-  
-  module.exports = router;
+module.exports = router;
   
