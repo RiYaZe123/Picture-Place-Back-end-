@@ -12,7 +12,7 @@ db.connect(function(err) {
 });
 
 // 장소 등록
-router.post('/', (req, res) => {
+router.post('/', authenticateToken, (req, res) => {
     const { roadname, roadnumber, latitude, longitude, locationhp } = req.body;
 
     const insertLocationSql = 'INSERT INTO location (roadname, roadnumber, latitude, longitude, locationhp) VALUES (?, ?, ?, ?, ?)';
@@ -72,7 +72,7 @@ router.get('/', (req, res) => {
 });
 
 // 장소 수정
-router.put('/:locationId', (req, res) => {
+router.put('/:locationId', authenticateToken, (req, res) => {
     const locationId = req.params.locationId;
     const { roadname, roadnumber, latitude, longitude, locationhp } = req.body;
   
