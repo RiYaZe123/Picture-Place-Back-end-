@@ -91,12 +91,13 @@ router.get('/mypin', authenticateToken, (req, res) => {
                             console.error(err);
                             const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
                             return res.status(500).json(error);
-                        } else if (result.length > 0) {
-                            const counts = result.reduce((acc, row) => {
-                                acc[row.postingid] = row.count;
-                                return acc;
-                            }, {});
                         }
+                        
+                        const counts = result.reduce((acc, row) => {
+                            acc[row.postingid] = row.count;
+                            return acc;
+                        }, {});
+
                         postingresults.forEach(posting => {
                             posting.recommendCount = counts[posting.postingid] || 0;
                         });
@@ -155,12 +156,12 @@ router.get('/search', (req, res) => {
                             console.error(err);
                             const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
                             return res.status(500).json(error);
-                        } else if (result.length > 0) {
-                            const counts = result.reduce((acc, row) => {
-                                acc[row.postingid] = row.count;
-                                return acc;
-                            }, {});
-                        }
+                        } 
+                        const counts = result.reduce((acc, row) => {
+                            acc[row.postingid] = row.count;
+                            return acc;
+                        }, {});
+
                         postingresults.forEach(posting => {
                             posting.recommendCount = counts[posting.postingid] || 0;
                         });
