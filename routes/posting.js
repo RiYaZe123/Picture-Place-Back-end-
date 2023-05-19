@@ -58,9 +58,9 @@ router.get('/mypin', authenticateToken, (req, res) => {
     const userid = req.user;
     const sql = 'SELECT * FROM posting WHERE userid = ?';
     db.get().query(sql, [userid], (err, postingresults) => {
-        if(err) {
+        if (err) {
             console.error(err);
-            const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
             res.status(500).json(error);
         } else if (postingresults.length > 0) {
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
@@ -68,30 +68,50 @@ router.get('/mypin', authenticateToken, (req, res) => {
             const sqlParams = [postingIds];
 
             db.get().query(sql, [sqlParams], (err, pictureresults) => {
-                if(err) {
+                if (err) {
                     console.error(err);
-                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+                    const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
                     res.status(500).json(error);
                 } else if (pictureresults.length > 0) {
-                    for(let i = 0; i<postingresults.length; i++) {
+                    for (let i = 0; i < postingresults.length; i++) {
                         let picarr = new Array();
-                        pictureresults.forEach(function(picture) {
-                            if(postingresults[i].postingid == picture.postingid){
+                        pictureresults.forEach(function (picture) {
+                            if (postingresults[i].postingid == picture.postingid) {
                                 picarr.push(picture_url + picture.pictureid);
                             }
                         });
                         postingresults[i].pictures = picarr;
                     }
-                    res.json(postingresults);
+
+                    // 현재 게시글의 추천 수를 가져옵니다.
+                    const countSql = 'SELECT COUNT(*) AS count FROM recommand WHERE postingid IN ?;';
+                    const countParams = [postingIds];
+                    db.get().query(countSql, [countParams], (err, result) => {
+                        if (err) {
+                            console.error(err);
+                            const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
+                            return res.status(500).json(error);
+                        }
+                        const counts = result.reduce((acc, row) => {
+                            acc[row.postingid] = row.count;
+                            return acc;
+                        }, {});
+
+                        postingresults.forEach(posting => {
+                            posting.recommendCount = counts[posting.postingid] || 0;
+                        });
+
+                        res.json(postingresults);
+                    });
                 } else {
-                    for(let i = 0; i<postingresults.length; i++) {
+                    for (let i = 0; i < postingresults.length; i++) {
                         postingresults[i].pictures = "";
                     }
                     res.json(postingresults);
                 }
             });
         } else {
-            const error = { "errorCode" : "U010", "message" : "DB 검색 결과가 없습니다."};
+            const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
             res.status(400).json(error);
         }
     });
@@ -104,7 +124,7 @@ router.get('/search', (req, res) => {
     db.get().query(sql, [`%${searchTerm}%`], (err, postingresults) => {
         if (err) {
             console.error(err);
-            const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
             res.status(500).json(error);
         } else if (postingresults.length > 0) {
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
@@ -112,30 +132,50 @@ router.get('/search', (req, res) => {
             const sqlParams = [postingIds];
 
             db.get().query(sql, [sqlParams], (err, pictureresults) => {
-                if(err) {
+                if (err) {
                     console.error(err);
-                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+                    const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
                     res.status(500).json(error);
                 } else if (pictureresults.length > 0) {
-                    for(let i = 0; i<postingresults.length; i++) {
+                    for (let i = 0; i < postingresults.length; i++) {
                         let picarr = new Array();
-                        pictureresults.forEach(function(picture) {
-                            if(postingresults[i].postingid == picture.postingid){
+                        pictureresults.forEach(function (picture) {
+                            if (postingresults[i].postingid == picture.postingid) {
                                 picarr.push(picture_url + picture.pictureid);
                             }
                         });
                         postingresults[i].pictures = picarr;
                     }
-                    res.json(postingresults);
+
+                    // 현재 게시글의 추천 수를 가져옵니다.
+                    const countSql = 'SELECT COUNT(*) AS count FROM recommand WHERE postingid IN ?;';
+                    const countParams = [postingIds];
+                    db.get().query(countSql, [countParams], (err, result) => {
+                        if (err) {
+                            console.error(err);
+                            const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
+                            return res.status(500).json(error);
+                        }
+                        const counts = result.reduce((acc, row) => {
+                            acc[row.postingid] = row.count;
+                            return acc;
+                        }, {});
+
+                        postingresults.forEach(posting => {
+                            posting.recommendCount = counts[posting.postingid] || 0;
+                        });
+
+                        res.json(postingresults);
+                    });
                 } else {
-                    for(let i = 0; i<postingresults.length; i++) {
+                    for (let i = 0; i < postingresults.length; i++) {
                         postingresults[i].pictures = "";
                     }
                     res.json(postingresults);
                 }
             });
         } else {
-            const error = { "errorCode" : "U010", "message" : "DB 검색 결과가 없습니다."};
+            const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
             res.status(400).json(error);
         }
     });
