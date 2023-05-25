@@ -15,6 +15,7 @@ db.connect(function(err) {
 router.post('/', authenticateToken, (req, res) => {
     const { postingid } = req.body;
     const userid = req.user;
+    const currentDate = new Date();
 
     const checkSql = 'SELECT * FROM recommand WHERE userid = ? AND postingid = ? LIMIT 1;';
     db.get().query(checkSql, [userid, postingid], (err, rows) => {
@@ -48,8 +49,8 @@ router.post('/', authenticateToken, (req, res) => {
             });
         } else {
             // 추천을 추가합니다.
-            const insertSql = 'INSERT INTO recommand (userid, postingid) VALUES (?, ?);';
-            db.get().query(insertSql, [userid, postingid], (err) => {
+            const insertSql = 'INSERT INTO recommand (userid, postingid, date) VALUES (?, ?, ?);';
+            db.get().query(insertSql, [userid, postingid, currentDate], (err) => {
                 if (err) {
                     console.error(err);
                     const error = { "errorCode": "U014", "message": "추천을 등록하는 동안 오류가 발생했습니다." };

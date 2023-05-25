@@ -19,13 +19,11 @@ db.connect(function(err) {
 
 router.post('/upload', authenticateToken, upload.array('photo', 5), (req, res) => {
     const files = req.files;
-    //originalname : 업로드된 파일 원본 이름
-    //path : 서버에 저장된 파일의 경로
     const userid = req.user;
     const uploaddate = new Date();
     let postingid = 0;
-    const { roadname, content, disclosure } = req.body;
-    
+    const { roadname, content, disclosure, tags } = req.body;  // 태그를 추가하기 위해 'tags' 변수를 추가합니다.
+
     // 글 작성
     const sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?);';
     db.get().query(sql, [disclosure, content, roadname, userid, uploaddate], (err, result) => {
@@ -35,7 +33,7 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), (req, res) =
             res.status(500).json(error);
         } else if (files.length > 0) {
             postingid = result.insertId;
-            let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid] );
+            let picture_array = files.map(picture => [userid, picture.filename, picture.originalname, uploaddate, picture.mimetype, postingid]);
 
             const picture_sql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES ?';
             db.get().query(picture_sql, [picture_array], (err, result) => {
@@ -44,7 +42,18 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), (req, res) =
                     const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
                     res.status(500).json(error);
                 } else {
-                    res.json({ "message" : "핀 등록이 완료되었습니다." });
+                    // 태그 작성
+                    let tag_array = tags.map(tag => [postingid, tag]);  // 태그 배열을 사용하여 tag_array를 생성합니다.
+                    const tag_sql = 'INSERT INTO tags (postingid, tag) VALUES ?';
+                    db.get().query(tag_sql, [tag_array], (err, result) => {
+                        if (err) {
+                            console.error(err);
+                            const error = { "errorCode" : "U009", "message" : "데이터베이스에 태그를 등록하지 못했습니다."};
+                            res.status(500).json(error);
+                        } else {
+                            res.json({ "message" : "핀 등록이 완료되었습니다." });
+                        }
+                    });
                 }
             });
         } else {
@@ -83,26 +92,48 @@ router.get('/mypin', authenticateToken, (req, res) => {
                         postingresults[i].pictures = picarr;
                     }
 
-                    // 현재 게시글의 추천 수를 가져옵니다.
-                    const countSql = 'SELECT postingid, COUNT(*) AS count FROM recommand WHERE postingid IN ? GROUP BY postingid;';
-                    const countParams = [postingIds];
-                    db.get().query(countSql, [countParams], (err, result) => {
+                    // 태그 가져오기
+                    const tagSql = 'SELECT * FROM tags WHERE postingid IN ?';
+                    db.get().query(tagSql, [sqlParams], (err, tagResults) => {
                         if (err) {
                             console.error(err);
-                            const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
-                            return res.status(500).json(error);
+                            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                            res.status(500).json(error);
+                        } else {
+                            const tagMap = tagResults.reduce((acc, row) => {
+                                if (!acc[row.postingid]) {
+                                    acc[row.postingid] = [];
+                                }
+                                acc[row.postingid].push(row.tag);
+                                return acc;
+                            }, {});
+
+                            postingresults.forEach(posting => {
+                                posting.tags = tagMap[posting.postingid] || [];
+                            });
+
+                            // 현재 게시글의 추천 수를 가져옵니다.
+                            const countSql = 'SELECT postingid, COUNT(*) AS count FROM recommand WHERE postingid IN ? GROUP BY postingid;';
+                            const countParams = [postingIds];
+                            db.get().query(countSql, [countParams], (err, result) => {
+                                if (err) {
+                                    console.error(err);
+                                    const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
+                                    return res.status(500).json(error);
+                                }
+
+                                const counts = result.reduce((acc, row) => {
+                                    acc[row.postingid] = row.count;
+                                    return acc;
+                                }, {});
+
+                                postingresults.forEach(posting => {
+                                    posting.recommendCount = counts[posting.postingid] || 0;
+                                });
+
+                                res.json(postingresults);
+                            });
                         }
-
-                        const counts = result.reduce((acc, row) => {
-                            acc[row.postingid] = row.count;
-                            return acc;
-                        }, {});
-
-                        postingresults.forEach(posting => {
-                            posting.recommendCount = counts[posting.postingid] || 0;
-                        });
-
-                        res.json(postingresults);
                     });
                 } else {
                     for (let i = 0; i < postingresults.length; i++) {
@@ -148,25 +179,48 @@ router.get('/search', (req, res) => {
                         postingresults[i].pictures = picarr;
                     }
 
-                    // 현재 게시글의 추천 수를 가져옵니다.
-                    const countSql = 'SELECT postingid, COUNT(*) AS count FROM recommand WHERE postingid IN ? GROUP BY postingid;';
-                    const countParams = [postingIds];
-                    db.get().query(countSql, [countParams], (err, result) => {
+                    // 태그 정보를 가져옵니다.
+                    const tagSql = 'SELECT * FROM tags WHERE postingid IN ?';
+                    db.get().query(tagSql, [sqlParams], (err, tagResults) => {
                         if (err) {
                             console.error(err);
-                            const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
-                            return res.status(500).json(error);
-                        } 
-                        const counts = result.reduce((acc, row) => {
-                            acc[row.postingid] = row.count;
-                            return acc;
-                        }, {});
+                            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                            res.status(500).json(error);
+                        } else {
+                            const tagMap = tagResults.reduce((acc, row) => {
+                                if (!acc[row.postingid]) {
+                                    acc[row.postingid] = [];
+                                }
+                                acc[row.postingid].push(row.tag);
+                                return acc;
+                            }, {});
 
-                        postingresults.forEach(posting => {
-                            posting.recommendCount = counts[posting.postingid] || 0;
-                        });
-                    
-                        res.json(postingresults);
+                            postingresults.forEach(posting => {
+                                posting.tags = tagMap[posting.postingid] || [];
+                            });
+
+                            // 현재 게시글의 추천 수를 가져옵니다.
+                            const countSql = 'SELECT postingid, COUNT(*) AS count FROM recommand WHERE postingid IN ? GROUP BY postingid;';
+                            const countParams = [postingIds];
+                            db.get().query(countSql, [countParams], (err, result) => {
+                                if (err) {
+                                    console.error(err);
+                                    const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
+                                    return res.status(500).json(error);
+                                }
+
+                                const counts = result.reduce((acc, row) => {
+                                    acc[row.postingid] = row.count;
+                                    return acc;
+                                }, {});
+
+                                postingresults.forEach(posting => {
+                                    posting.recommendCount = counts[posting.postingid] || 0;
+                                });
+
+                                res.json(postingresults);
+                            });
+                        }
                     });
                 } else {
                     for (let i = 0; i < postingresults.length; i++) {
@@ -211,31 +265,57 @@ router.get('/:postingid', authenticateToken, (req, res) => {
     const postingid = req.params.postingid;
     const selectPostingSql = 'SELECT * FROM posting WHERE userid = ? AND postingid = ?;';
     const selectPictureSql = 'SELECT * FROM picture WHERE postingid = ?;';
+    const selectTagsSql = 'SELECT * FROM tags WHERE postingid = ?;';
+    
     db.get().query(selectPostingSql, [userid, postingid], (err, postingresult) => {
-        if(err) {
+        if (err) {
             console.error(err);
-            const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
             res.status(500).json(error);
         } else if (postingresult.length > 0) {
             db.get().query(selectPictureSql, postingid, (err, pictureresults) => {
-                if(err) {
+                if (err) {
                     console.error(err);
-                    const error = { "errorCode" : "U009", "message" : "데이터베이스에 접속하지 못했습니다."};
+                    const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
                     res.status(500).json(error);
                 } else if (pictureresults.length > 0) {
                     let picarr = new Array();
-                    pictureresults.forEach(function(picture) {
+                    pictureresults.forEach(function (picture) {
                         picarr.push(picture_url + picture.pictureid);
                     });
                     postingresult[0].pictures = picarr;
-                    res.json(postingresult);
+
+                    // 기존 태그 불러오기
+                    db.get().query(selectTagsSql, postingid, (err, tagsResults) => {
+                        if (err) {
+                            console.error(err);
+                            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                            res.status(500).json(error);
+                        } else {
+                            const tags = tagsResults.map(tag => tag.tag);
+                            postingresult[0].tags = tags;
+                            res.json(postingresult);
+                        }
+                    });
                 } else {
-                    postingresult.pictures = "";
-                    res.json(postingresults);
+                    postingresult[0].pictures = "";
+                    
+                    // 기존 태그 불러오기
+                    db.get().query(selectTagsSql, postingid, (err, tagsResults) => {
+                        if (err) {
+                            console.error(err);
+                            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                            res.status(500).json(error);
+                        } else {
+                            const tags = tagsResults.map(tag => tag.tag);
+                            postingresult[0].tags = tags;
+                            res.json(postingresult);
+                        }
+                    });
                 }
             });
         } else {
-            const error = { "errorCode" : "U010", "message" : "핀을 찾을 수 없습니다."};
+            const error = { "errorCode": "U010", "message": "핀을 찾을 수 없습니다." };
             res.status(404).json(error);
         }
     });
@@ -245,7 +325,7 @@ router.get('/:postingid', authenticateToken, (req, res) => {
 router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res) => {
     const postingid = req.params.postingid;
     const files = req.files;
-    const { disclosure, content, roadname } = req.body;
+    const { disclosure, content, roadname, tags } = req.body;
     const userid = req.user;
     const uploaddate = new Date();
 
@@ -268,6 +348,8 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
         const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
         const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
         const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
+        const deleteTagSql = 'DELETE FROM tag WHERE postingid=?;';
+        const insertTagSql = 'INSERT INTO tag (postingid, tag) VALUES (?, ?);';
         const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
 
         db.get().getConnection((err, connection) => { // 커넥션 가져오기
@@ -309,23 +391,9 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
                                 return res.status(500).json({ message: '내부 서버 오류' });
                             });
                         }
-                        
-                        //서버에서 기존 사진 삭제
-                        connection.query(selectPictureSql, postingid, (err, result) => {
-                            if(result.length > 0){
-                                result.forEach(function(picture){
-                                    file = './pictures/' + picture.pictureid;
-                                    fs.unlink(file, function(err){
-                                        if(err) {
-                                            console.log(err);
-                                        }
-                                    });
-                                });
-                            }
-                        });
 
-                        // 데이터베이스에서 기존 사진 삭제
-                        connection.query(deletePictureSql, [postingid], (err, result) => {
+                        // 기존 태그 삭제
+                        connection.query(deleteTagSql, [postingid], (err, result) => {
                             if (err) {
                                 console.error(err);
                                 connection.rollback(() => {
@@ -334,13 +402,10 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
                                 });
                             }
 
-                            // 새로운 사진 추가
-                            const picturePromises = files.map(file => {
-                                const originalname = file.originalname;
-                                const pictureid = file.filename;
-                                const extension = file.mimetype;
+                            // 새로운 태그 추가
+                            const tagPromises = tags.map(tag => {
                                 return new Promise((resolve, reject) => {
-                                    connection.query(insertPictureSql, [userid, pictureid, originalname, uploaddate, extension, postingid], (err, result) => {
+                                    connection.query(insertTagSql, [postingid, tag], (err, result) => {
                                         if (err) {
                                             reject(err);
                                         } else {
@@ -350,19 +415,70 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
                                 });
                             });
 
-                            Promise.all(picturePromises)
+                            Promise.all(tagPromises)
                                 .then(() => {
-                                    connection.commit((err) => { // 트랜잭션 커밋
+                                    // 기존 사진 삭제
+                                    connection.query(selectPictureSql, postingid, (err, result) => {
+                                        if (result.length > 0) {
+                                            result.forEach(function (picture) {
+                                                file = './pictures/' + picture.pictureid;
+                                                fs.unlink(file, function (err) {
+                                                    if (err) {
+                                                        console.log(err);
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    });
+
+                                    // 데이터베이스에서 기존 사진 삭제
+                                    connection.query(deletePictureSql, [postingid], (err, result) => {
                                         if (err) {
                                             console.error(err);
                                             connection.rollback(() => {
                                                 connection.release(); // 커넥션 반환
                                                 return res.status(500).json({ message: '내부 서버 오류' });
                                             });
-                                        } else {
-                                            connection.release(); // 커넥션 반환
-                                            return res.status(200).json({ message: '게시물이 수정되었습니다.' });
                                         }
+
+                                        // 새로운 사진 추가
+                                        const picturePromises = files.map(file => {
+                                            const originalname = file.originalname;
+                                            const pictureid = file.filename;
+                                            const extension = file.mimetype;
+                                            return new Promise((resolve, reject) => {
+                                                connection.query(insertPictureSql, [userid, pictureid, originalname, uploaddate, extension, postingid], (err, result) => {
+                                                    if (err) {
+                                                        reject(err);
+                                                    } else {
+                                                        resolve();
+                                                    }
+                                                });
+                                            });
+                                        });
+
+                                        Promise.all(picturePromises)
+                                            .then(() => {
+                                                connection.commit((err) => { // 트랜잭션 커밋
+                                                    if (err) {
+                                                        console.error(err);
+                                                        connection.rollback(() => {
+                                                            connection.release(); // 커넥션 반환
+                                                            return res.status(500).json({ message: '내부 서버 오류' });
+                                                        });
+                                                    } else {
+                                                        connection.release(); // 커넥션 반환
+                                                        return res.status(200).json({ message: '게시물이 수정되었습니다.' });
+                                                    }
+                                                });
+                                            })
+                                            .catch(err => {
+                                                console.error(err);
+                                                connection.rollback(() => {
+                                                    connection.release(); // 커넥션 반환
+                                                    return res.status(500).json({ message: '내부 서버 오류' });
+                                                });
+                                            });
                                     });
                                 })
                                 .catch(err => {
@@ -379,6 +495,7 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
         });
     });
 });
+
   
 // 글 삭제
 router.delete('/:postingid', authenticateToken, (req, res) => {
@@ -388,6 +505,7 @@ router.delete('/:postingid', authenticateToken, (req, res) => {
     const deletePostingSql = "DELETE FROM posting WHERE postingid = ?";
     const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
     const deletePictureSql = "DELETE FROM picture WHERE postingid = ?";
+    const deleteTagsSql = "DELETE FROM tags WHERE postingid = ?";
 
     db.get().getConnection((err, connection) => { // 커넥션 가져오기
         if (err) {
@@ -431,13 +549,13 @@ router.delete('/:postingid', authenticateToken, (req, res) => {
                         return;
                     }
 
-                    //서버에서 사진 삭제
+                    // 서버에서 사진 삭제
                     connection.query(selectPictureSql, [postingid], (err, result) => {
-                        if(result.length > 0){
-                            result.forEach(function(picture){
+                        if (result.length > 0) {
+                            result.forEach(function (picture) {
                                 file = './pictures/' + picture.pictureid;
-                                fs.unlink(file, function(err){
-                                    if(err) {
+                                fs.unlink(file, function (err) {
+                                    if (err) {
                                         console.log(err);
                                     }
                                 });
@@ -456,16 +574,28 @@ router.delete('/:postingid', authenticateToken, (req, res) => {
                             return;
                         }
 
-                        connection.commit((err) => { // 트랜잭션 커밋
+                        // 태그 삭제
+                        connection.query(deleteTagsSql, [postingid], (err, result) => {
                             if (err) {
                                 connection.rollback(() => {
                                     console.error(err);
                                     return res.status(500).json({ message: '내부 서버 오류' });
                                 });
-                            } else {
                                 connection.release(); // 커넥션 반환
-                                res.send('게시물이 삭제되었습니다.');
+                                return;
                             }
+
+                            connection.commit((err) => { // 트랜잭션 커밋
+                                if (err) {
+                                    connection.rollback(() => {
+                                        console.error(err);
+                                        return res.status(500).json({ message: '내부 서버 오류' });
+                                    });
+                                } else {
+                                    connection.release(); // 커넥션 반환
+                                    res.send('게시물이 삭제되었습니다.');
+                                }
+                            });
                         });
                     });
                 });
@@ -473,5 +603,6 @@ router.delete('/:postingid', authenticateToken, (req, res) => {
         });
     });
 });
+
 
 module.exports = router;
