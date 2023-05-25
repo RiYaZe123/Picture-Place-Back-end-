@@ -254,7 +254,7 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
     db.get().query(checkDisclosureSql, postingid, (err, result) => {
         if (err) {
             console.error(err);
-            const error = { "errorCode": "U022", "message": "게시물의 disclosure 상태를 확인하는 동안 오류가 발생했습니다." };
+            const error = { "errorCode": "U024", "message": "게시물의 disclosure 상태를 확인하는 동안 오류가 발생했습니다." };
             return res.status(500).json(error);
         }
 
