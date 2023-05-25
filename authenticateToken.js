@@ -9,14 +9,14 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const accessToken = authHeader && authHeader.split(' ')[1];
     if(accessToken === undefined) {
-        const error = { "errorCode" : "U011", "message" : "로그인이 되어있지 않습니다."};
+        const error = { "errorCode" : "U004", "message" : "로그인이 되어있지 않습니다."};
         res.status(401).json(error);
     } else {
         // access token이 정상인지 확인
         jwt.verify(accessToken, secretKey, (err, decode) => {
             //에러가 있으면 refresh token이 썩었기 때문에 다시 로그인 시킨다.
             if (err) {
-                const error = { "errorCode" : "U011", "message" : "로그인이 만료되었습니다. 다시 로그인 해주세요."};
+                const error = { "errorCode" : "U005", "message" : "로그인이 만료되었습니다. 다시 로그인 해주세요."};
                 res.status(403).json(error);
             } else {
                 req.user = decode.userid;

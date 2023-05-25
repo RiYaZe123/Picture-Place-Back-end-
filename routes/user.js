@@ -35,7 +35,7 @@ router.post('/login', (req, res) => {
                         res.cookie("access", accessToken);
                         res.cookie("refresh", refreshToken);
                         //res.json({ accessToken });
-                        res.send();
+                        res.json({ "message" : "로그인이 완료되었습니다." });
                     } else {
                         const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
                         res.status(400).json(error);
@@ -59,13 +59,13 @@ router.post("/refresh", (req, res) => {
         jwt.verify(refreshToken, refreshKey, (err, decode) => {
             //에러가 있으면 refresh token이 썩었기 때문에 다시 로그인 시킨다.
             if (err) {
-                const error = { "errorCode" : "U006", "message" : "로그인이 만료되었습니다. 다시 로그인해주세요."};
+                const error = { "errorCode" : "U005", "message" : "로그인이 만료되었습니다. 다시 로그인해주세요."};
                 res.status(403).json(error);
             } else {
                 const userid = decode.userid;
                 const accessToken = jwt.sign({userid: userid}, secretKey, {'expiresIn': '1h'}); // 토큰 생성
                 res.cookie("access", accessToken);
-                res.send({ "message": "로그인이 연장되었습니다." });
+                res.json({ "message": "로그인이 연장되었습니다." });
             }
         });
     }
@@ -77,24 +77,9 @@ router.get('/protected', authenticateToken, (req, res) => {
 
 // 로그아웃
 router.post('/logout', authenticateToken, (req, res) => {
-    const authHeader = req.headers.authorization;
-    const accessToken = authHeader && authHeader.split(' ')[1];
-    if (!accessToken) {
-        const error = { "errorCode" : "U006", "message" : "로그인이 되어 있지 않습니다."};
-        res.status(401).json(error);
-    } else {
-        jwt.verify(accessToken, secretKey, (err, decode) => {
-            //에러가 있으면 refresh token이 썩었기 때문에 다시 로그인 시킨다.
-            if (err) {
-                const error = { "errorCode" : "U006", "message" : "로그인이 만료되었습니다."};
-                res.status(403).json(error);
-            } else {
-                res.clearCookie('access');
-                res.clearCookie('refresh');
-                res.send({ "message" : "로그아웃이 완료되었습니다." });
-            }
-        });
-    }
+    res.clearCookie('access');
+    res.clearCookie('refresh');
+    res.json({ "message": "로그아웃이 완료되었습니다." });
 });
 
 // 회원가입
