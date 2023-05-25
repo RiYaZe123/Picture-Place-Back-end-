@@ -109,8 +109,9 @@ router.get('/week-posting', (req, res) => {
 router.get('/random', (req, res) => {
     const randomsql = 'SELECT tag FROM tags ORDER BY RAND() LIMIT 1;';
     const sql = `
-        SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate, GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, GROUP_CONCAT(DISTINCT t.tag) AS tags
+        SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate, GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, GROUP_CONCAT(DISTINCT t.tag) AS tags, COUNT(r.postingid) AS recommendCount
         FROM posting p
+        LEFT JOIN recommand r ON p.postingid = r.postingid
         LEFT JOIN picture pi ON p.postingid = pi.postingid
         LEFT JOIN tags t ON p.postingid = t.postingid
         WHERE p.postingid IN (
@@ -156,9 +157,11 @@ router.get('/random', (req, res) => {
   
 router.get('/popular', (req, res) => {
     const sql = `
-        SELECT p.*, COUNT(r.postingid) AS recommendCount
+        SELECT p.*, GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, GROUP_CONCAT(DISTINCT t.tag) AS tags, COUNT(r.postingid) AS recommendCount
         FROM posting p
         LEFT JOIN recommand r ON p.postingid = r.postingid
+        LEFT JOIN picture pi ON p.postingid = pi.postingid
+        LEFT JOIN tags t ON p.postingid = t.postingid
         WHERE p.locationname = (
         SELECT locationname
         FROM posting
