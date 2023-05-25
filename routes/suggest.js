@@ -115,7 +115,7 @@ router.get('/random', (req, res) => {
         LEFT JOIN picture pi ON p.postingid = pi.postingid
         LEFT JOIN tags t ON p.postingid = t.postingid
         WHERE p.postingid IN (
-            SELECT DISTINCT t.postingid, t.tag
+            SELECT DISTINCT t.postingid
             FROM tags t
             WHERE t.tag = ?
         ) AND p.disclosure != '비공개'
