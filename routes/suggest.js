@@ -107,47 +107,49 @@ router.get('/week-posting', (req, res) => {
 });
 
 router.get('/random', (req, res) => {
+    const randomsql = 'SELECT tag FROM tags ORDER BY RAND() LIMIT 1;';
     const sql = `
-        SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate,
-            GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures,
-            GROUP_CONCAT(DISTINCT t.tag ORDER BY t.tag) AS tags
+        SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate, GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, GROUP_CONCAT(DISTINCT t.tag) AS tags
         FROM posting p
         LEFT JOIN picture pi ON p.postingid = pi.postingid
         LEFT JOIN tags t ON p.postingid = t.postingid
         WHERE p.postingid IN (
-            SELECT DISTINCT t.postingid
+            SELECT DISTINCT t.postingid, t.tag
             FROM tags t
-            WHERE t.tag = (
-                SELECT tag
-                FROM tags
-                ORDER BY RAND()
-                LIMIT 1
-            )
+            WHERE t.tag = ?
         ) AND p.disclosure != '비공개'
         GROUP BY p.postingid;
     `;
-  
-    db.get().query(sql, (err, results) => {
+
+    db.get().query(randomsql, (err, randomresult) => {
         if (err) {
             console.error(err);
             const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
             res.status(500).json(error);
         } else {
-            const response = results.map(result => {
-                const posting = {
-                    postingid: result.postingid,
-                    disclosure: result.disclosure,
-                    content: result.content,
-                    locationname: result.locationname,
-                    userid: result.userid,
-                    postdate: result.postdate,
-                    pictures: result.pictures ? result.pictures.split(',') : [],
-                    tags: result.tags ? result.tags.split(',') : []
-                };
-                return posting;
+            const count = randomresult[0].tag;
+            db.get().query(sql, count, (err, results) => {
+                if (err) {
+                    console.error(err);
+                    const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                    res.status(500).json(error);
+                } else {
+                    const response = results.map(result => {
+                        const posting = {
+                            postingid: result.postingid,
+                            disclosure: result.disclosure,
+                            content: result.content,
+                            locationname: result.locationname,
+                            userid: result.userid,
+                            postdate: result.postdate,
+                            pictures: result.pictures ? result.pictures.split(',') : [],
+                            tags: result.tags ? result.tags.split(',') : []
+                        };
+                        return posting;
+                    });
+                    res.json(response);
+                }
             });
-  
-            res.json(response);
         }
     });
 });
