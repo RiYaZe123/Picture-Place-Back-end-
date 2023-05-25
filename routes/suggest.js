@@ -45,11 +45,11 @@ router.get('/week-posting', (req, res) => {
                     newObject[acc] > newObject[cur] ? acc : cur
                 );
             
-            const postingRoads = postingresults.map(postingresult => postingresult.roadname);
+            const postingRoads = postingresults.map(postingresult => postingresult.locationname);
             const mostPostingRoad = modeKey(getElCount(postingRoads));
 
             const results = postingresults.filter((postingresult) => {
-                    return (postingresult.roadname === mostPostingRoad);
+                    return (postingresult.locationname === mostPostingRoad);
                 });
 
             const postingIds = results.map(postingresult => postingresult.postingid);
@@ -108,7 +108,7 @@ router.get('/week-posting', (req, res) => {
 
 router.get('/', (req, res) => {
     const sql = `
-        SELECT p.postingid, p.disclosure, p.content, p.roadname, p.userid, p.postdate,
+        SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate,
              GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures,
              GROUP_CONCAT(DISTINCT t.tag) AS tags,
              COUNT(r.postingid) AS recommendCount
@@ -136,7 +136,7 @@ router.get('/', (req, res) => {
                     postingid: result.postingid,
                     disclosure: result.disclosure,
                     content: result.content,
-                    roadname: result.roadname,
+                    locationname: result.locationname,
                     userid: result.userid,
                     postdate: result.postdate,
                     pictures: result.pictures ? result.pictures.split(',') : [],
@@ -156,10 +156,10 @@ router.get('/popular', (req, res) => {
         SELECT p.*, COUNT(r.postingid) AS recommendCount
         FROM posting p
         LEFT JOIN recommand r ON p.postingid = r.postingid
-        WHERE p.roadname = (
-        SELECT roadname
+        WHERE p.locationname = (
+        SELECT locationname
         FROM posting
-        GROUP BY roadname
+        GROUP BY locationname
         ORDER BY COUNT(*) DESC
         LIMIT 1
         )

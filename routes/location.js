@@ -13,9 +13,9 @@ db.connect(function(err) {
 
 // 장소 등록
 router.post('/', authenticateToken, (req, res) => {
-    const { roadname, roadaddress, latitude, longitude, locationhp } = req.body;
+    const { locationname, locationaddress, latitude, longitude, locationhp } = req.body;
 
-    const insertLocationSql = 'INSERT INTO location (roadname, roadaddress, latitude, longitude, locationhp) VALUES (?, ?, ?, ?, ?)';
+    const insertLocationSql = 'INSERT INTO location (locationname, locationaddress, latitude, longitude, locationhp) VALUES (?, ?, ?, ?, ?)';
 
     db.get().getConnection((err, connection) => {
         if (err) {
@@ -23,7 +23,7 @@ router.post('/', authenticateToken, (req, res) => {
             return res.status(500).json({"errorCode": "U022", "message": '장소 삽입 접속 관련 서버 오류' });
         }
 
-        connection.query(insertLocationSql, [roadname, roadaddress, latitude, longitude, locationhp], (err, result) => {
+        connection.query(insertLocationSql, [locationname, locationaddress, latitude, longitude, locationhp], (err, result) => {
             connection.release(); // 커넥션 반환
 
             if (err) {
