@@ -22,11 +22,11 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), (req, res) =
     const userid = req.user;
     const uploaddate = new Date();
     let postingid = 0;
-    const { roadname, content, disclosure, tags } = req.body;  // 태그를 추가하기 위해 'tags' 변수를 추가합니다.
+    const { locationname, content, disclosure, tags } = req.body;  // 태그를 추가하기 위해 'tags' 변수를 추가합니다.
 
     // 글 작성
-    const sql = 'INSERT INTO posting (disclosure, content, roadname, userid, postdate) VALUES (?, ?, ?, ?, ?);';
-    db.get().query(sql, [disclosure, content, roadname, userid, uploaddate], (err, result) => {
+    const sql = 'INSERT INTO posting (disclosure, content, locationname, userid, postdate) VALUES (?, ?, ?, ?, ?);';
+    db.get().query(sql, [disclosure, content, locationname, userid, uploaddate], (err, result) => {
         if(err) {
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 핀을 등록하지 못했습니다."};
@@ -152,7 +152,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
 router.get('/search', (req, res) => {
     const searchTerm = req.query.q; // 쿼리 파라미터로 전달된 검색어
 
-    const sql = 'SELECT * FROM posting WHERE roadname LIKE ? AND disclosure != "비공개"';
+    const sql = 'SELECT * FROM posting WHERE locationname LIKE ? AND disclosure != "비공개"';
     db.get().query(sql, [`%${searchTerm}%`], (err, postingresults) => {
         if (err) {
             console.error(err);
@@ -325,7 +325,7 @@ router.get('/:postingid', authenticateToken, (req, res) => {
 router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res) => {
     const postingid = req.params.postingid;
     const files = req.files;
-    const { disclosure, content, roadname, tags } = req.body;
+    const { disclosure, content, locationname, tags } = req.body;
     const userid = req.user;
     const uploaddate = new Date();
 
@@ -345,7 +345,7 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
             return res.status(400).json(error);
         }
 
-        const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, roadname=? WHERE postingid=?;';
+        const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, locationname=? WHERE postingid=?;';
         const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
         const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
         const deleteTagSql = 'DELETE FROM tag WHERE postingid=?;';
@@ -383,7 +383,7 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
                     }
 
                     // 게시물 수정
-                    connection.query(updatePostingSql, [disclosure, content, roadname, postingid], (err, result) => {
+                    connection.query(updatePostingSql, [disclosure, content, locationname, postingid], (err, result) => {
                         if (err) {
                             console.error(err);
                             connection.rollback(() => {
