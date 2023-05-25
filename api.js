@@ -6,6 +6,7 @@ const postRouter = require('./routes/posting');
 const reportRouter = require('./routes/report');
 const recommendRouter = require('./routes/recommend');
 const locationRouter = require('./routes/location');
+const suggestRouter = require('./routes/suggest');
 
 //https 모듈
 const https = require('https');
@@ -27,6 +28,7 @@ app.use('/posting', postRouter);
 app.use('/report', reportRouter);
 app.use('/recommend', recommendRouter);
 app.use('/location', locationRouter);
+app.use('/suggest', suggest1Router);
 
 // 실제 서버 구동 여부 true: 서버, false: 로컬
 const prod = false;
