@@ -106,7 +106,7 @@ router.get('/week-posting', (req, res) => {
     });
 });
 
-router.get('/', (req, res) => {
+router.get('/random', (req, res) => {
     const sql = `
         SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate,
              GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures,
