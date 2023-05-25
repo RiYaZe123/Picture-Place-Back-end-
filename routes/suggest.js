@@ -106,7 +106,7 @@ router.get('/week-posting', (req, res) => {
     });
 });
 
-router.get('/', (req, res) => {
+router.get('/random', (req, res) => {
     const sql = `
         SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate,
              GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures,
@@ -119,6 +119,7 @@ router.get('/', (req, res) => {
         WHERE t.tag = (
             SELECT tag
             FROM tags
+            WHERE postingid = p.postingid
             ORDER BY RAND()
             LIMIT 1
         ) AND p.disclosure != '비공개'
@@ -132,7 +133,7 @@ router.get('/', (req, res) => {
             res.status(500).json(error);
         } else {
             const response = results.map(result => {
-            const posting = {
+                const posting = {
                     postingid: result.postingid,
                     disclosure: result.disclosure,
                     content: result.content,
@@ -150,6 +151,7 @@ router.get('/', (req, res) => {
         }
     });
 });
+
 
 router.get('/popular', (req, res) => {
     const sql = `
