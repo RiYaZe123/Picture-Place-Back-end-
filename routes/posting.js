@@ -348,8 +348,8 @@ router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res
         const updatePostingSql = 'UPDATE posting SET disclosure=?, content=?, locationname=? WHERE postingid=?;';
         const selectPictureSql = 'SELECT * FROM picture WHERE postingid=?;';
         const deletePictureSql = 'DELETE FROM picture WHERE postingid=?;';
-        const deleteTagSql = 'DELETE FROM tag WHERE postingid=?;';
-        const insertTagSql = 'INSERT INTO tag (postingid, tag) VALUES (?, ?);';
+        const deleteTagSql = 'DELETE FROM tags WHERE postingid=?;';
+        const insertTagSql = 'INSERT INTO tags (postingid, tag) VALUES (?, ?);';
         const insertPictureSql = 'INSERT INTO picture (userid, pictureid, name, date, extension, postingid) VALUES (?, ?, ?, ?, ?, ?)';
 
         db.get().getConnection((err, connection) => { // 커넥션 가져오기
