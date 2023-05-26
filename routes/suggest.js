@@ -195,9 +195,22 @@ router.get('/popular', (req, res) => {
             console.error(err);
             const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
             return res.status(500).json(error);
+        } else {
+            const response = results.map(result => {
+                const posting = {
+                    postingid: result.postingid,
+                    disclosure: result.disclosure,
+                    content: result.content,
+                    locationname: result.locationname,
+                    userid: result.userid,
+                    postdate: result.postdate,
+                    pictures: result.pictures ? result.pictures.split(',') : [],
+                    tags: result.tags ? result.tags.split(',') : []
+                };
+                return posting;
+            });
+            res.json(response);
         }
-
-        res.json(results);
     });
 });
 
