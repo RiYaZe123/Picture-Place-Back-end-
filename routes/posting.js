@@ -144,7 +144,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
             });
         } else {
             const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
-            res.status(400).json(error);
+            res.status(404).json(error);
         }
     });
 });
@@ -231,7 +231,7 @@ router.get('/search', (req, res) => {
             });
         } else {
             const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
-            res.status(400).json(error);
+            res.status(404).json(error);
         }
     });
 });

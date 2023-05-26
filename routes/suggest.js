@@ -101,7 +101,7 @@ router.get('/weeklyloca', (req, res) => {
             });
         } else {
             const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
-            res.status(400).json(error);
+            res.status(404).json(error);
         }
     });
 });
@@ -141,7 +141,7 @@ router.get('/random', (req, res) => {
                     console.error(err);
                     const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
                     res.status(500).json(error);
-                } else {
+                } else if (results.length > 0) {
                     const response = results.map(result => {
                         const posting = {
                             postingid: result.postingid,
@@ -157,6 +157,9 @@ router.get('/random', (req, res) => {
                         return posting;
                     });
                     res.json(response);
+                } else {
+                    const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
+                    res.status(404).json(error);
                 }
             });
         }
@@ -196,7 +199,7 @@ router.get('/popular', (req, res) => {
             console.error(err);
             const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
             return res.status(500).json(error);
-        } else {
+        } else if (results.length > 0) {
             const response = results.map(result => {
                 const posting = {
                     postingid: result.postingid,
@@ -212,6 +215,9 @@ router.get('/popular', (req, res) => {
                 return posting;
             });
             res.json(response);
+        } else {
+            const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
+            res.status(404).json(error);
         }
     });
 });
