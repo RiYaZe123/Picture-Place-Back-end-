@@ -23,7 +23,7 @@ function dateFormat(date) {
     return date.getFullYear() + '-' + month + '-' + day;
 }
 
-router.get('/week-posting', (req, res) => {
+router.get('/weeklyloca', (req, res) => {
     let today = new Date().setDate(new Date().getDate() + 1);
     let lastweek = new Date().setDate(new Date().getDate() - 7);
 
@@ -151,7 +151,8 @@ router.get('/random', (req, res) => {
                             userid: result.userid,
                             postdate: result.postdate,
                             pictures: result.pictures ? result.pictures.split(',') : [],
-                            tags: result.tags ? result.tags.split(',') : []
+                            tags: result.tags ? result.tags.split(',') : [],
+                            recommendCount: result.recommendCount || 0
                         };
                         return posting;
                     });
@@ -205,7 +206,8 @@ router.get('/popular', (req, res) => {
                     userid: result.userid,
                     postdate: result.postdate,
                     pictures: result.pictures ? result.pictures.split(',') : [],
-                    tags: result.tags ? result.tags.split(',') : []
+                    tags: result.tags ? result.tags.split(',') : [],
+                    recommendCount: result.recommendCount || 0
                 };
                 return posting;
             });
