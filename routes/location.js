@@ -17,14 +17,22 @@ router.post('/', authenticateToken, (req, res) => {
 
     const insertLocationSql = 'INSERT INTO location (locationid, locationname, locationaddress, latitude, longitude, locationhp) VALUES (?, ?, ?, ?, ?)';
 
-    db.get().query(insertLocationSql, [locationid, locationname, locationaddress, latitude, longitude, locationhp], (err, result) => {
-
+    db.get().getConnection((err, connection) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            return res.status(500).json({"errorCode": "U022", "message": '장소 삽입 접속 관련 서버 오류' });
         }
 
-        return res.status(200).json({ message: '장소가 등록되었습니다.' });
+        connection.query(insertLocationSql, [locationid, locationname, locationaddress, latitude, longitude, locationhp], (err, result) => {
+            connection.release(); // 커넥션 반환
+
+            if (err) {
+                console.error(err);
+                return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            }
+
+            return res.status(200).json({ message: '장소가 등록되었습니다.' });
+        });
     });
 });
 
@@ -35,12 +43,20 @@ router.get('/within-area', (req, res) => {
 
     const searchLocationSql = 'SELECT * FROM location WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?';
 
-    db.get().query(searchLocationSql, [minLatitude, maxLatitude, minLongitude, maxLongitude], (err, result) => {
+    db.get().getConnection((err, connection) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            return res.status(500).json({"errorCode": "U022", "message": '장소 삽입 접속 관련 서버 오류' });
         }
-        return res.status(200).json(result);
+
+        connection.query(searchLocationSql, [minLatitude, maxLatitude, minLongitude, maxLongitude], (err, result) => {
+            connection.release(); // 커넥션 반환
+            if (err) {
+                console.error(err);
+                return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            }
+            return res.status(200).json(result);
+        });
     });
 });
 
@@ -51,12 +67,20 @@ router.get('/nearest', (req, res) => {
 
     const searchLocationSql = 'SELECT *, SQRT(POW(latitude - ?, 2) + POW(longitude - ?, 2)) AS distance FROM location ORDER BY distance ASC LIMIT 1';
 
-    db.get().query(searchLocationSql, [latitude, longitude], (err, result) => {
+    db.get().getConnection((err, connection) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            return res.status(500).json({"errorCode": "U022", "message": '장소 삽입 접속 관련 서버 오류' });
         }
-        return res.status(200).json(result);
+
+        connection.query(searchLocationSql, [latitude, longitude], (err, result) => {
+            connection.release(); // 커넥션 반환
+            if (err) {
+                console.error(err);
+                return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            }
+            return res.status(200).json(result);
+        });
     });
 });
 
@@ -67,12 +91,20 @@ router.get('/within-radius', (req, res) => {
 
     const searchLocationSql = 'SELECT *, SQRT(POW(latitude - ?, 2) + POW(longitude - ?, 2)) AS distance FROM location WHERE SQRT(POW(latitude - ?, 2) + POW(longitude - ?, 2)) <= ?';
 
-    db.get().query(searchLocationSql, [centerLatitude, centerLongitude, centerLatitude, centerLongitude, radius], (err, result) => {
+    db.get().getConnection((err, connection) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            return res.status(500).json({"errorCode": "U022", "message": '장소 삽입 접속 관련 서버 오류' });
         }
-        return res.status(200).json(result);
+
+        connection.query(searchLocationSql, [centerLatitude, centerLongitude, centerLatitude, centerLongitude, radius], (err, result) => {
+            connection.release(); // 커넥션 반환
+            if (err) {
+                console.error(err);
+                return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            }
+            return res.status(200).json(result);
+        });
     });
 });
 
