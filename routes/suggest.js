@@ -109,8 +109,8 @@ router.get('/weeklyloca', (req, res) => {
 router.get('/random', (req, res) => {
     const randomsql = 'SELECT tag FROM tags ORDER BY RAND() LIMIT 1;';
     const sql = `
-        SELECT p.postingid, p.disclosure, p.content, p.locationname, p.userid, p.postdate, 
-	    GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, 
+        SELECT p.postingid, p.disclosure, p.content, lo.locationname, p.userid, p.postdate, 
+        GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, 
         GROUP_CONCAT(DISTINCT t.tag) AS tags, 
         COALESCE(r.recommendCount, 0) AS recommendCount
         FROM posting p
@@ -121,6 +121,7 @@ router.get('/random', (req, res) => {
         ) r ON p.postingid = r.postingid
         LEFT JOIN picture pi ON p.postingid = pi.postingid
         LEFT JOIN tags t ON p.postingid = t.postingid
+        LEFT JOIN location lo ON p.locationid = lo.locationid
         WHERE p.postingid IN (
         SELECT DISTINCT t.postingid
         FROM tags t
@@ -168,7 +169,7 @@ router.get('/random', (req, res) => {
   
 router.get('/popular', (req, res) => {
     const sql = `
-        SELECT p.*, GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, GROUP_CONCAT(DISTINCT t.tag) AS tags, COALESCE(subquery.recommendCount, 0) AS recommendCount
+        SELECT p.postingid, p.disclosure, p.content, lo.locationname, p.userid, p.postdate, GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures, GROUP_CONCAT(DISTINCT t.tag) AS tags, COALESCE(subquery.recommendCount, 0) AS recommendCount
         FROM posting p
         LEFT JOIN (
         SELECT r.postingid, COUNT(r.postingid) AS recommendCount
@@ -179,14 +180,15 @@ router.get('/popular', (req, res) => {
         ) AS subquery ON p.postingid = subquery.postingid
         LEFT JOIN picture pi ON p.postingid = pi.postingid
         LEFT JOIN tags t ON p.postingid = t.postingid
-        WHERE p.locationname = (
-        SELECT locationname
+        LEFT JOIN location lo ON p.locationid = lo.locationid
+        WHERE p.locationid = (
+        SELECT locationid
         FROM (
-        SELECT p.locationname, COUNT(r.postingid) AS recommendCount
+        SELECT p.locationid, COUNT(r.postingid) AS recommendCount
         FROM recommand r
         LEFT JOIN posting p ON r.postingid = p.postingid
         WHERE r.date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY p.locationname
+        GROUP BY p.locationid
         ORDER BY recommendCount DESC
         LIMIT 1
         ) AS subquery

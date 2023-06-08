@@ -152,7 +152,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
 router.get('/search', (req, res) => {
     const searchTerm = req.query.q; // 쿼리 파라미터로 전달된 검색어
 
-    const sql = 'SELECT posting.* FROM posting INNER JOIN location ON posting.locationid = location.locationid WHERE location.locationname LIKE ? AND posting.disclosure != "비공개"';
+    const sql = 'SELECT p.postingid, p.disclosure, p.content, lo.locationname, p.userid, p.postdate FROM posting p INNER JOIN location lo ON p.locationid = lo.locationid  WHERE lo.locationname LIKE ? AND p.disclosure != "비공개"';
     db.get().query(sql, [`%${searchTerm}%`], (err, postingresults) => {
         if (err) {
             console.error(err);
