@@ -30,7 +30,7 @@ router.get('/weeklyloca', (req, res) => {
     today = dateFormat(new Date(today));
     lastweek = dateFormat(new Date(lastweek));
 
-    const sql = 'SELECT * FROM posting WHERE postdate BETWEEN ? AND ? AND disclosure != "비공개"';
+    const sql = 'SELECT posting.*, location.locationname FROM posting INNER JOIN location ON posting.locationid = location.locationid WHERE postdate BETWEEN ? AND ? AND disclosure != "비공개"';
     db.get().query(sql, [lastweek, today], (err, postingresults) => {
         if (err) {
             console.error(err);

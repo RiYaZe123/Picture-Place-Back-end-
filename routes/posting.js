@@ -152,8 +152,8 @@ router.get('/mypin', authenticateToken, (req, res) => {
 router.get('/search', (req, res) => {
     const searchTerm = req.query.q; // 쿼리 파라미터로 전달된 검색어
 
-    const sql = 'SELECT posting.* FROM posting INNER JOIN location ON posting.locationid = location.locationid WHERE location.locationname LIKE ? AND posting.disclosure != "비공개"';
-    db.get().query(sql, [`%${searchTerm}%`], (err, postingresults) => {
+    const sql = 'SELECT posting.* FROM posting INNER JOIN location ON posting.locationid = location.locationid WHERE (location.locationname LIKE ? OR location.locationaddress LIKE ?) AND posting.disclosure != "비공개"';
+    db.get().query(sql, [`%${searchTerm}%`, `%${searchTerm}%`], (err, postingresults) => {
         if (err) {
             console.error(err);
             const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
