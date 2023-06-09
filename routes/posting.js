@@ -48,7 +48,6 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
 
     // 경도와 위도로 구글맵 id, 장소명, 도로명 주소 구해
     let locationid = await getPlaceId(latitude, longitude);
-    console.log(locationid);
     if(locationid=="notfound") {
         return res.status(404).json({"errorCode" : "U030", "message" : "해당 위치의 장소 ID를 찾을 수 없음"});
     }
