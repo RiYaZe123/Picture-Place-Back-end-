@@ -3,6 +3,7 @@ const db = require("../db"); // 데이터베이스
 const authenticateToken = require("../authenticateToken"); // 인증
 const multer = require('multer');
 const fs = require('fs');
+const axios = require('axios');
 const router = express.Router();
 const picture_url = 'https://www.picplace.kro.kr/posting/picture/';
 
@@ -17,12 +18,78 @@ db.connect(function(err) {
     }
 });
 
+function getPlaceId(latitude, longitude) {
+    const apiKey = 'AIzaSyB4nmNgwNuXPhfBqriDyFKYh289imkLG9o'; // Google Places API 키
+  
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=100&key=${apiKey}`;
+  
+    // Google Places Nearby Search API를 사용하여 가장 가까운 장소 정보를 가져옵니다
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (data.results.length > 0) {
+          const placeId = data.results[0].place_id;
+          console.log('Place ID:', placeId);
+          return placeId;
+        } else {
+          console.log('No nearby places found.');
+          return null;
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        return null;
+      });
+}
+
+async function getPlaceIdFromCoordinates(latitude, longitude) {
+    try {
+        const apiKey = 'AIzaSyB4nmNgwNuXPhfBqriDyFKYh289imkLG9o'; // Google Places API 키
+        const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=location&inputtype=textquery&fields=place_id&locationbias=circle:100@${latitude},${longitude}&key=${apiKey}`;
+        const response = await axios.get(url);
+        
+        if (response.data.status === 'OK' && response.data.candidates.length > 0) {
+            const placeId = response.data.candidates[0].place_id;
+            console.log('Place ID:', placeId);
+            return placeId;
+        } else {
+            throw new Error('Failed to retrieve place ID from coordinates.');
+        }
+    } catch (error) {
+      throw new Error(error.message);
+    }
+}
+
 router.post('/upload', authenticateToken, upload.array('photo', 5), (req, res) => {
     const files = req.files;
     const userid = req.user;
     const uploaddate = new Date();
     let postingid = 0;
-    const { locationid, content, disclosure, tags } = req.body;  // 태그를 추가하기 위해 'tags' 변수를 추가합니다.
+    const { locationname, locationaddress, locationhp, latitude, longitude, content, disclosure, tags } = req.body;  // 태그를 추가하기 위해 'tags' 변수를 추가합니다.
+
+    // 경도와 위도로 구글맵 id, 장소명, 도로명 주소 구해
+    let locationid = getPlaceIdFromCoordinates(latitude, longitude);
+    console.log(locationid);
+
+    // id가 만약에 locationDB에 없다면 새로 추가 & 있다면 그냥 패스
+    const locasql = 'SELECT locationname FROM WHERE locationid = ?';
+    db.get.query(locasql, [locationid], (err, result) => {
+        if(err) {
+            console.error(err);
+            const error = { "errorCode" : "U024", "message" : "장소 조회 오류"};
+            return res.status(500).json(error);
+        }
+
+        if(result.length < 1) {
+            const insertLocationSql = 'INSERT INTO location (locationid, locationname, locationaddress, latitude, longitude, locationhp) VALUES (?, ?, ?, ?, ?, ?)';
+            db.get().query(insertLocationSql, [locationid, locationname, locationaddress, latitude, longitude, locationhp], (err, result) => {
+                if (err) {
+                  console.error(err);
+                  return res.status(500).json({ "errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+                }
+            });
+        }
+    });
 
     // 글 작성
     const sql = 'INSERT INTO posting (disclosure, content, locationid, userid, postdate) VALUES (?, ?, ?, ?, ?);';
