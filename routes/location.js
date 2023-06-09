@@ -62,6 +62,7 @@ router.get('/within-area', (req, res) => {
 
 // 검색한 장소에서 가장 가까운 장소 찾기
 // 검색하려는 중심 위치의 좌표를 나타낸다. 이를 기준으로 가장 가까운 장소를 찾는다.
+/*
 router.get('/nearest', (req, res) => {
     const { latitude, longitude } = req.query;
 
@@ -80,6 +81,43 @@ router.get('/nearest', (req, res) => {
                 return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
             }
             return res.status(200).json(result);
+        });
+    });
+});
+*/
+router.get('/nearest', (req, res) => {
+    const { centerLatitude, centerLongitude } = req.query;
+    let zoom = req.query.zoom;
+    if (zoom < 10) {
+        zoom = 10;
+    } else if (zoom > 15) {
+        zoom = 15;
+    }
+    let radius = (2**(16-zoom))/2*1000;
+
+    const searchLocationSql = `
+    SELECT posting.*, location.locationname
+    FROM location
+    INNER JOIN posting ON posting.locationid = location.locationid
+    WHERE ST_Distance_Sphere(
+        point(longitude, latitude),
+        point(?, ?)
+    ) <= ?;
+    `;
+
+    db.get().getConnection((err, connection) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({"errorCode": "U022", "message": '장소 삽입 접속 관련 서버 오류' });
+        }
+
+        connection.query(searchLocationSql, [centerLongitude, centerLatitude, radius], (err, results) => {
+            connection.release(); // 커넥션 반환
+            if (err) {
+                console.error(err);
+                return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            }
+            return res.status(200).json(results);
         });
     });
 });
