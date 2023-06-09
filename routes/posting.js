@@ -18,30 +18,6 @@ db.connect(function(err) {
     }
 });
 
-function getPlaceId2(latitude, longitude) {
-    const apiKey = 'AIzaSyB4nmNgwNuXPhfBqriDyFKYh289imkLG9o'; // Google Places API 키
-  
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=100&key=${apiKey}`;
-  
-    // Google Places Nearby Search API를 사용하여 가장 가까운 장소 정보를 가져옵니다
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        if (data.results.length > 0) {
-          const placeId = data.results[0].place_id;
-          console.log('Place ID:', placeId);
-          return placeId;
-        } else {
-          console.log('No nearby places found.');
-          return null;
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        return null;
-      });
-}
-
 const getPlaceId = (latitude, longitude) => {return new Promise(async(resolve, reject) => {
     try {
         const apiKey = 'AIzaSyB4nmNgwNuXPhfBqriDyFKYh289imkLG9o'; // Google Places API 키
@@ -53,12 +29,10 @@ const getPlaceId = (latitude, longitude) => {return new Promise(async(resolve, r
             console.log('Place ID:', placeId);
             resolve(placeId);
         } else {
-            throw new Error('Failed to retrieve place ID from coordinates.');
-            reject("");
+            resolve("notfound");
         }
     } catch (error) {
-      throw new Error(error.message);
-      reject("");
+        resolve("notfound");
     }
 })
 }
@@ -74,6 +48,10 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
 
     // 경도와 위도로 구글맵 id, 장소명, 도로명 주소 구해
     let locationid = await getPlaceId(latitude, longitude);
+    console.log(locationid);
+    if(locationid=="notfound") {
+        return res.status(404).json({"errorCode" : "U030", "message" : "해당 위치의 장소 ID를 찾을 수 없음"});
+    }
 
     // id가 만약에 locationDB에 없다면 새로 추가 & 있다면 그냥 패스
     const locasql = 'SELECT locationname FROM location WHERE locationid = ?';
