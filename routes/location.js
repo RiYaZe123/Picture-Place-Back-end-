@@ -62,8 +62,13 @@ router.get('/within-area', (req, res) => {
 
 // 검색한 장소에서 가장 가까운 장소 찾기
 // 검색하려는 중심 위치의 좌표를 나타낸다. 이를 기준으로 가장 가까운 장소를 찾는다.
+// 일단 위도, 경도 받아서 그 주변에 있는 locationid 채취
+// 채취한 locationid를 가지고 posting 정보 전달
+// 2번에는 nearest도 필요하고 within-radius 기능도 필요
 router.get('/nearest', (req, res) => {
-    const { latitude, longitude } = req.query;
+    const { locationid } = req.query;
+
+    // locationid로 posting 받아오기
 
     const searchLocationSql = 'SELECT *, SQRT(POW(latitude - ?, 2) + POW(longitude - ?, 2)) AS distance FROM location ORDER BY distance ASC LIMIT 1';
 
@@ -86,10 +91,33 @@ router.get('/nearest', (req, res) => {
 
 // 검색한 장소의 반경 안에서 장소 찾기
 // centerLatitude, centerLongitude는 검색하려는 중심 위치의 좌표를 나타내며, radius는 반경을 나타낸다.
+// 1번은 이거 하나만 수정
 router.get('/within-radius', (req, res) => {
-    const { centerLatitude, centerLongitude, radius } = req.query;
+    const { centerLatitude, centerLongitude, zoom } = req.query;
 
-    const searchLocationSql = 'SELECT *, SQRT(POW(latitude - ?, 2) + POW(longitude - ?, 2)) AS distance FROM location WHERE SQRT(POW(latitude - ?, 2) + POW(longitude - ?, 2)) <= ?';
+    if (zoom < 0 || zoom > 15) {
+        return res.status(500).json({"errorCode": "U030", "message": '유효한 줌 레벨을 입력하세요' });
+    }
+
+    const radius = Math.pow(2, (15 - zoom)); // 반경 계산
+
+    const searchLocationSql = `
+        SELECT latitude, longitude, locationid,
+        (
+            6371 * 
+            ACOS(
+                COS(RADIANS(?)) *
+                COS(RADIANS(latitude)) *
+                COS(RADIANS(longitude) - RADIANS(?)) +
+                SIN(RADIANS(?)) *
+                SIN(RADIANS(latitude))
+            )
+        ) AS distance
+        FROM
+            location
+        HAVING
+            distance <= ?
+    `;
 
     db.get().getConnection((err, connection) => {
         if (err) {
@@ -97,7 +125,7 @@ router.get('/within-radius', (req, res) => {
             return res.status(500).json({"errorCode": "U022", "message": '장소 삽입 접속 관련 서버 오류' });
         }
 
-        connection.query(searchLocationSql, [centerLatitude, centerLongitude, centerLatitude, centerLongitude, radius], (err, result) => {
+        connection.query(searchLocationSql, [centerLatitude, centerLongitude, centerLatitude, radius], (err, result) => {
             connection.release(); // 커넥션 반환
             if (err) {
                 console.error(err);
@@ -108,22 +136,92 @@ router.get('/within-radius', (req, res) => {
     });
 });
 
+
 // locationid로 장소 가져오기
 router.get('/', (req, res) => {
     const { locationid } = req.query;
 
-    const searchLocationSql = 'SELECT * FROM location WHERE locationid = ?';
-
-    db.get().query(searchLocationSql, locationid, (err, result) => {
+    const sql = 'SELECT * FROM posting WHERE locationid = ?';
+    console.log("마이 핀 요청");
+    db.get().query(sql, [locationid], (err, postingresults) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({"errorCode": "U023", "message": "장소 SQL 쿼리 사용 관련 오류" });
-        }
-        else if (result.length > 0) {
-            return res.status(200).json(result);
-        }
-        else {
-            return res.status(200).json({"locationid": "0"});
+            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+            res.status(500).json(error);
+        } else if (postingresults.length > 0) {
+            const postingIds = postingresults.map(postingresult => postingresult.postingid);
+            const sql = 'SELECT * FROM picture WHERE postingid IN ?';
+            const sqlParams = [postingIds];
+
+            db.get().query(sql, [sqlParams], (err, pictureresults) => {
+                if (err) {
+                    console.error(err);
+                    const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                    res.status(500).json(error);
+                } else if (pictureresults.length > 0) {
+                    for (let i = 0; i < postingresults.length; i++) {
+                        let picarr = new Array();
+                        pictureresults.forEach(function (picture) {
+                            if (postingresults[i].postingid == picture.postingid) {
+                                picarr.push(picture_url + picture.pictureid);
+                            }
+                        });
+                        postingresults[i].pictures = picarr;
+                    }
+
+                    // 태그 가져오기
+                    const tagSql = 'SELECT * FROM tags WHERE postingid IN ?';
+                    db.get().query(tagSql, [sqlParams], (err, tagResults) => {
+                        if (err) {
+                            console.error(err);
+                            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                            res.status(500).json(error);
+                        } else {
+                            const tagMap = tagResults.reduce((acc, row) => {
+                                if (!acc[row.postingid]) {
+                                    acc[row.postingid] = [];
+                                }
+                                acc[row.postingid].push(row.tag);
+                                return acc;
+                            }, {});
+
+                            postingresults.forEach(posting => {
+                                posting.tags = tagMap[posting.postingid] || [];
+                            });
+
+                            // 현재 게시글의 추천 수를 가져옵니다.
+                            const countSql = 'SELECT postingid, COUNT(*) AS count FROM recommand WHERE postingid IN ? GROUP BY postingid;';
+                            const countParams = [postingIds];
+                            db.get().query(countSql, [countParams], (err, result) => {
+                                if (err) {
+                                    console.error(err);
+                                    const error = { "errorCode": "U015", "message": "추천 수를 가져오는 동안 오류가 발생했습니다." };
+                                    return res.status(500).json(error);
+                                }
+
+                                const counts = result.reduce((acc, row) => {
+                                    acc[row.postingid] = row.count;
+                                    return acc;
+                                }, {});
+
+                                postingresults.forEach(posting => {
+                                    posting.recommendCount = counts[posting.postingid] || 0;
+                                });
+                                console.log("마이핀 조회 성공");
+                                res.json(postingresults);
+                            });
+                        }
+                    });
+                } else {
+                    for (let i = 0; i < postingresults.length; i++) {
+                        postingresults[i].pictures = "";
+                    }
+                    res.json(postingresults);
+                }
+            });
+        } else {
+            const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
+            res.status(404).json(error);
         }
     });
 });
