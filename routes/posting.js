@@ -113,7 +113,7 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
 
 router.get('/mypin', authenticateToken, (req, res) => {
     const userid = req.user;
-    const sql = 'SELECT * FROM posting WHERE userid = ?';
+    const sql = 'SELECT posting.*, location.locationname FROM posting INNER JOIN location ON posting.locationid = location.locationid WHERE userid = ?';
     console.log("마이 핀 요청");
     db.get().query(sql, [userid], (err, postingresults) => {
         if (err) {
