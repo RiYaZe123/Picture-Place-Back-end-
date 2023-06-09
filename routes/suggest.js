@@ -145,6 +145,7 @@ router.get('/random', (req, res) => {
                 } else if (results.length > 0) {
                     const response = results.map(result => {
                         const posting = {
+                            randomtag: count,
                             postingid: result.postingid,
                             disclosure: result.disclosure,
                             content: result.content,
