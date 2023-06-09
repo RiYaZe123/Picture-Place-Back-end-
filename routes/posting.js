@@ -18,7 +18,7 @@ db.connect(function(err) {
     }
 });
 
-function getPlaceId(latitude, longitude) {
+function getPlaceId2(latitude, longitude) {
     const apiKey = 'AIzaSyB4nmNgwNuXPhfBqriDyFKYh289imkLG9o'; // Google Places API 키
   
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=100&key=${apiKey}`;
@@ -42,7 +42,7 @@ function getPlaceId(latitude, longitude) {
       });
 }
 
-async function getPlaceIdFromCoordinates(latitude, longitude) {
+const getPlaceId = (latitude, longitude) => {return new Promise(async(resolve, reject) => {
     try {
         const apiKey = 'AIzaSyB4nmNgwNuXPhfBqriDyFKYh289imkLG9o'; // Google Places API 키
         const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=location&inputtype=textquery&fields=place_id&locationbias=circle:100@${latitude},${longitude}&key=${apiKey}`;
@@ -51,29 +51,33 @@ async function getPlaceIdFromCoordinates(latitude, longitude) {
         if (response.data.status === 'OK' && response.data.candidates.length > 0) {
             const placeId = response.data.candidates[0].place_id;
             console.log('Place ID:', placeId);
-            return placeId;
+            resolve(placeId);
         } else {
             throw new Error('Failed to retrieve place ID from coordinates.');
+            reject("");
         }
     } catch (error) {
       throw new Error(error.message);
+      reject("");
     }
+})
 }
 
-router.post('/upload', authenticateToken, upload.array('photo', 5), (req, res) => {
+router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, res) => {
     const files = req.files;
     const userid = req.user;
     const uploaddate = new Date();
     let postingid = 0;
-    const { locationname, locationaddress, locationhp, latitude, longitude, content, disclosure, tags } = req.body;  // 태그를 추가하기 위해 'tags' 변수를 추가합니다.
+    const { locationname, locationaddress, locationhp, latitude, longitude, content, disclosure } = req.body;
+    let tags = req.body.tags;
+    tags = [...new Set(tags)]; // 중복 태그를 제거합니다.
 
     // 경도와 위도로 구글맵 id, 장소명, 도로명 주소 구해
-    let locationid = getPlaceIdFromCoordinates(latitude, longitude);
-    console.log(locationid);
+    let locationid = await getPlaceId(latitude, longitude);
 
     // id가 만약에 locationDB에 없다면 새로 추가 & 있다면 그냥 패스
-    const locasql = 'SELECT locationname FROM WHERE locationid = ?';
-    db.get.query(locasql, [locationid], (err, result) => {
+    const locasql = 'SELECT locationname FROM location WHERE locationid = ?';
+    db.get().query(locasql, [locationid], (err, result) => {
         if(err) {
             console.error(err);
             const error = { "errorCode" : "U024", "message" : "장소 조회 오류"};
@@ -133,6 +137,7 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), (req, res) =
 router.get('/mypin', authenticateToken, (req, res) => {
     const userid = req.user;
     const sql = 'SELECT * FROM posting WHERE userid = ?';
+    console.log("마이 핀 요청");
     db.get().query(sql, [userid], (err, postingresults) => {
         if (err) {
             console.error(err);
@@ -197,7 +202,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
                                 postingresults.forEach(posting => {
                                     posting.recommendCount = counts[posting.postingid] || 0;
                                 });
-
+                                console.log("마이핀 조회 성공");
                                 res.json(postingresults);
                             });
                         }
