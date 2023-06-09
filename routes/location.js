@@ -142,7 +142,6 @@ router.get('/', (req, res) => {
     const { locationid } = req.query;
 
     const sql = 'SELECT * FROM posting WHERE locationid = ?';
-    console.log("마이 핀 요청");
     db.get().query(sql, [locationid], (err, postingresults) => {
         if (err) {
             console.error(err);
