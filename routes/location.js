@@ -170,7 +170,7 @@ router.get('/within-radius', (req, res) => {
     const radius = Math.pow(2, (15 - zoom))*1000; // 반경 계산
 
     const searchLocationSql = `
-        SELECT lo.latitude, lo.longitude, lo.locationid
+        SELECT DISTINCT lo.latitude, lo.longitude, lo.locationid
         FROM location lo
         INNER JOIN posting p ON p.locationid = lo.locationid
         WHERE ST_Distance_Sphere(
