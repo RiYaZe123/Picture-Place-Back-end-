@@ -30,7 +30,83 @@ router.get('/weeklyloca', (req, res) => {
     today = dateFormat(new Date(today));
     lastweek = dateFormat(new Date(lastweek));
 
-    const sql = 'SELECT posting.*, location.locationname FROM posting INNER JOIN location ON posting.locationid = location.locationid WHERE postdate BETWEEN ? AND ? AND disclosure != "비공개"';
+    const locationSql = `
+            SELECT locationid, COUNT(locationid)
+            FROM posting
+            WHERE postdate BETWEEN ? AND ?
+            AND disclosure != "비공개"
+            GROUP BY locationid
+            ORDER BY COUNT(locationid)
+            DESC LIMIT 1
+    `;
+    db.get().query(locationSql, [lastweek, today], (err, locationresult) => {
+        if (err) {
+            console.error(err);
+            const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+            res.status(500).json(error);
+        } else if (locationresult.length > 0) {
+            const sql = `
+                SELECT p.*, lo.locationname, GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures,
+                GROUP_CONCAT(DISTINCT t.tag) AS tags, COUNT(r.postingid) AS recommendCount
+                FROM posting p
+                LEFT JOIN recommand r ON p.postingid = r.postingid
+                LEFT JOIN picture pi ON p.postingid = pi.postingid
+                LEFT JOIN tags t ON p.postingid = t.postingid
+                INNER JOIN location lo ON p.locationid = lo.locationid
+                WHERE p.locationid = ?
+                AND postdate BETWEEN ? AND ?
+                AND p.disclosure != "비공개"
+                GROUP BY p.postingid;
+            `;
+
+            db.get().query(sql, [locationresult[0].locationid, lastweek, today], (err, results) => {
+                if (err) {
+                    console.error(err);
+                    const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
+                    res.status(500).json(error);
+                } else if (results.length > 0) {
+                    const response = results.map(result => {
+                        const posting = {
+                            postingid: result.postingid,
+                            disclosure: result.disclosure,
+                            content: result.content,
+                            locationid: result.locationid,
+                            locationname: result.locationname,
+                            userid: result.userid,
+                            postdate: result.postdate,
+                            pictures: result.pictures ? result.pictures.split(',') : [],
+                            tags: result.tags ? result.tags.split(',') : [],
+                            recommendCount: result.recommendCount / 4
+                        };
+                        return posting;
+                    });
+                    res.json(response);
+                } else {
+                    for (let i = 0; i < results.length; i++) {
+                        results[i].pictures = "";
+                    }
+                    res.json(results);
+                }
+            });
+        } else {
+            const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
+            res.status(400).json(error);
+        }
+    });
+});
+
+/*
+router.get('/weeklyloca', (req, res) => {
+    let today = new Date().setDate(new Date().getDate() + 1);
+    let lastweek = new Date().setDate(new Date().getDate() - 7);
+
+    today = dateFormat(new Date(today));
+    lastweek = dateFormat(new Date(lastweek));
+
+    const sql = `
+    SELECT posting.*, location.locationname
+    FROM posting INNER JOIN location ON posting.locationid = location.locationid
+    WHERE postdate BETWEEN ? AND ? AND disclosure != "비공개";`
     db.get().query(sql, [lastweek, today], (err, postingresults) => {
         if (err) {
             console.error(err);
@@ -105,6 +181,7 @@ router.get('/weeklyloca', (req, res) => {
         }
     });
 });
+*/
 
 router.get('/random', (req, res) => {
     const randomsql = 'SELECT tag FROM tags ORDER BY RAND() LIMIT 1;';
@@ -176,7 +253,7 @@ router.get('/popular', (req, res) => {
         SELECT r.postingid, COUNT(r.postingid) AS recommendCount
         FROM recommand r
         LEFT JOIN posting p ON r.postingid = p.postingid
-        WHERE r.date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        WHERE r.date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         GROUP BY r.postingid
         ) AS subquery ON p.postingid = subquery.postingid
         LEFT JOIN picture pi ON p.postingid = pi.postingid
@@ -188,7 +265,7 @@ router.get('/popular', (req, res) => {
         SELECT p.locationid, COUNT(r.postingid) AS recommendCount
         FROM recommand r
         LEFT JOIN posting p ON r.postingid = p.postingid
-        WHERE r.date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        WHERE r.date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         GROUP BY p.locationid
         ORDER BY recommendCount DESC
         LIMIT 1
