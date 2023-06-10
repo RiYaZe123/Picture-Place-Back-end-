@@ -99,13 +99,24 @@ router.get('/nearest', (req, res) => {
     let radius = (2**(15-zoom))*1000;
 
     const searchLocationSql = `
-    SELECT posting.*, location.locationname
-    FROM location
-    INNER JOIN posting ON posting.locationid = location.locationid
+    SELECT p.*, lo.locationname,
+    GROUP_CONCAT(DISTINCT CONCAT('${picture_url}', pi.pictureid)) AS pictures,
+    GROUP_CONCAT(DISTINCT t.tag) AS tags,
+    COALESCE(r.recommendCount, 0) AS recommendCount
+    FROM location lo
+    INNER JOIN posting p ON p.locationid = lo.locationid
+    LEFT JOIN (
+        SELECT postingid, COUNT(postingid) AS recommendCount
+        FROM recommand
+        GROUP BY postingid
+    ) r ON p.postingid = r.postingid
+    LEFT JOIN picture pi ON p.postingid = pi.postingid
+    LEFT JOIN tags t ON p.postingid = t.postingid
     WHERE ST_Distance_Sphere(
-        point(longitude, latitude),
+        point(lo.longitude, lo.latitude),
         point(?, ?)
-    ) <= ?;
+    ) <= ? AND p.disclosure != '비공개'
+    GROUP BY p.postingid;
     `;
 
     db.get().getConnection((err, connection) => {
@@ -119,8 +130,27 @@ router.get('/nearest', (req, res) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({"errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
+            } else if (results.length > 0) {
+                const response = results.map(result => {
+                    const posting = {
+                        postingid: result.postingid,
+                        disclosure: result.disclosure,
+                        content: result.content,
+                        locationid: result.locationid,
+                        locationname: result.locationname,
+                        userid: result.userid,
+                        postdate: result.postdate,
+                        pictures: result.pictures ? result.pictures.split(',') : [],
+                        tags: result.tags ? result.tags.split(',') : [],
+                        recommendCount: result.recommendCount || 0
+                    };
+                    return posting;
+                });
+                res.json(response);
+            } else {
+                const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
+                res.status(404).json(error);
             }
-            return res.status(200).json(results);
         });
     });
 });
