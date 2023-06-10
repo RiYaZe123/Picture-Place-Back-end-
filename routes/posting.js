@@ -26,7 +26,6 @@ const getPlaceId = (latitude, longitude) => {return new Promise(async(resolve, r
         
         if (response.data.status === 'OK' && response.data.candidates.length > 0) {
             const placeId = response.data.candidates[0].place_id;
-            console.log('Place ID:', placeId);
             resolve(placeId);
         } else {
             resolve("notfound");
@@ -37,13 +36,39 @@ const getPlaceId = (latitude, longitude) => {return new Promise(async(resolve, r
 })
 }
 
+// 안드로이드에서 multipart 형태로 보낼 때 큰따옴표 오는 것 제거
+const dataProcessing = (req) => {return new Promise(async(resolve) => {
+    try {
+        for (var key in req.body) {
+            if (Object.hasOwnProperty.bind(req.body)(key)) {
+                if(Array.isArray(req.body[key])) {
+                    let arrayLen = req.body[key].length;
+                    for(i=0;i<arrayLen;i++) {
+                        req.body[key][i] = req.body[key][i].replaceAll('"','');
+                    }
+                } else {
+                    req.body[key] = req.body[key].replaceAll('"','');
+                }
+            }
+        }
+        resolve(req.body);
+    } catch(err) {
+        resolve("error");
+    }
+})
+}
+
 router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, res) => {
     const files = req.files;
     const userid = req.user;
     const uploaddate = new Date();
     let postingid = 0;
+    req.body = await dataProcessing(req);
+    if (req.body == "error") {
+        return res.status(400).json({"errorCode" : "U025", "message" : "request body가 비어있음"});
+    }
     const { locationname, locationaddress, locationhp, latitude, longitude, content, disclosure } = req.body;
-    let tags = req.body.tags;
+    let { tags } = req.body;
     tags = [...new Set(tags)]; // 중복 태그를 제거합니다.
 
     // 경도와 위도로 구글맵 id, 장소명, 도로명 주소 구해
@@ -51,6 +76,7 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
     if(locationid=="notfound") {
         return res.status(404).json({"errorCode" : "U030", "message" : "해당 위치의 장소 ID를 찾을 수 없음"});
     }
+    console.log("id조회 완료");
 
     // id가 만약에 locationDB에 없다면 새로 추가 & 있다면 그냥 패스
     const locasql = 'SELECT locationname FROM location WHERE locationid = ?';
@@ -66,11 +92,13 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
             db.get().query(insertLocationSql, [locationid, locationname, locationaddress, latitude, longitude, locationhp], (err, result) => {
                 if (err) {
                   console.error(err);
+                  console.log("장소 SQL 쿼리 사용 관련 오류");
                   return res.status(500).json({ "errorCode": "U023", "message": '장소 SQL 쿼리 사용 관련 오류' });
                 }
             });
         }
     });
+    console.log("장소 등록 완료");
 
     // 글 작성
     const sql = 'INSERT INTO posting (disclosure, content, locationid, userid, postdate) VALUES (?, ?, ?, ?, ?);';
@@ -78,6 +106,7 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
         if(err) {
             console.error(err);
             const error = { "errorCode" : "U009", "message" : "데이터베이스에 핀을 등록하지 못했습니다."};
+            console.log("핀 등록 오류");
             res.status(500).json(error);
         } else if (files.length > 0) {
             postingid = result.insertId;
@@ -88,6 +117,7 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
                 if (err) {
                     console.error(err);
                     const error = { "errorCode" : "U009", "message" : "데이터베이스에 이미지를 등록하지 못했습니다."};
+                    console.log("데이터베이스에 이미지를 등록하지 못했습니다.");
                     res.status(500).json(error);
                 } else {
                     // 태그 작성
@@ -97,15 +127,17 @@ router.post('/upload', authenticateToken, upload.array('photo', 5), async (req, 
                         if (err) {
                             console.error(err);
                             const error = { "errorCode" : "U009", "message" : "데이터베이스에 태그를 등록하지 못했습니다."};
+                            console.log("태그 등록 오류");
                             res.status(500).json(error);
                         } else {
                             res.json({ "message" : "핀 등록이 완료되었습니다." });
+                            console.log("핀 등록 완료");
                         }
                     });
                 }
             });
         } else {
-            const error = { "errorCode" : "U011", "message" : "이미지 업로드를 실패했습니다."};
+            const error = { "errorCode" : "U011", "message" : "등록할 이미지가 없습니다."};
             res.status(400).json(error);
         }
     });
@@ -192,7 +224,7 @@ router.get('/mypin', authenticateToken, (req, res) => {
                 }
             });
         } else {
-            const error = { "errorCode": "U010", "message": "DB 검색 결과가 없습니다." };
+            const error = { "errorCode": "U010", "message": "핀 목록이 없습니다." };
             res.status(404).json(error);
         }
     });
@@ -201,18 +233,24 @@ router.get('/mypin', authenticateToken, (req, res) => {
 router.get('/search', (req, res) => {
     const searchTerm = req.query.q; // 쿼리 파라미터로 전달된 검색어
 
-    const sql = 'SELECT p.postingid, p.disclosure, p.content, lo.locationname, p.userid, p.postdate FROM posting p INNER JOIN location lo ON p.locationid = lo.locationid  WHERE lo.locationname LIKE ? AND p.disclosure != "비공개"';
-    db.get().query(sql, [`%${searchTerm}%`], (err, postingresults) => {
+    const searchSql = `
+    SELECT posting.*, location.locationname
+    FROM posting
+    INNER JOIN location ON posting.locationid = location.locationid
+    WHERE (location.locationname LIKE ? OR location.locationaddress LIKE ?)
+    AND posting.disclosure != "비공개";
+    `;
+    db.get().query(searchSql, [`%${searchTerm}%`, `%${searchTerm}%`], (err, postingresults) => {
         if (err) {
             console.error(err);
             const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
             res.status(500).json(error);
         } else if (postingresults.length > 0) {
             const postingIds = postingresults.map(postingresult => postingresult.postingid);
-            const sql = 'SELECT * FROM picture WHERE postingid IN ?';
+            const postingSql = 'SELECT * FROM picture WHERE postingid IN ?';
             const sqlParams = [postingIds];
 
-            db.get().query(sql, [sqlParams], (err, pictureresults) => {
+            db.get().query(postingSql, [sqlParams], (err, pictureresults) => {
                 if (err) {
                     console.error(err);
                     const error = { "errorCode": "U009", "message": "데이터베이스에 접속하지 못했습니다." };
@@ -371,9 +409,13 @@ router.get('/:postingid', authenticateToken, (req, res) => {
 });
 
 // 글 수정
-router.put('/:postingid', authenticateToken, upload.array('photo', 5), (req, res) => {
+router.put('/:postingid', authenticateToken, upload.array('photo', 5), async(req, res) => {
     const postingid = req.params.postingid;
     const files = req.files;
+    req.body = await dataProcessing(req);
+    if (req.body == "error") {
+        return res.status(400).json({"errorCode" : "U025", "message" : "request body가 비어있음"});
+    }
     const { disclosure, content, locationid, tags } = req.body;
     const userid = req.user;
     const uploaddate = new Date();
