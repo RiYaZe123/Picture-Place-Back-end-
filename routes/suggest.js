@@ -22,10 +22,10 @@ function dateFormat(date) {
 
     return date.getFullYear() + '-' + month + '-' + day;
 }
-
-router.get('/weeklyloca', (req, res) => {
+/*
+router.get('/weeklyloca1', (req, res) => {
     let today = new Date().setDate(new Date().getDate() + 1);
-    let lastweek = new Date().setDate(new Date().getDate() - 7);
+    let lastweek = new Date().setDate(new Date().getDate() - 8);
 
     today = dateFormat(new Date(today));
     lastweek = dateFormat(new Date(lastweek));
@@ -71,11 +71,11 @@ router.get('/weeklyloca', (req, res) => {
                             disclosure: result.disclosure,
                             content: result.content,
                             locationid: result.locationid,
-                            locationname: result.locationname,
                             userid: result.userid,
                             postdate: result.postdate,
+                            declaration: result.declaration,
+                            locationname: result.locationname,
                             pictures: result.pictures ? result.pictures.split(',') : [],
-                            tags: result.tags ? result.tags.split(',') : [],
                             recommendCount: result.recommendCount / 4
                         };
                         return posting;
@@ -94,8 +94,7 @@ router.get('/weeklyloca', (req, res) => {
         }
     });
 });
-
-/*
+*/
 router.get('/weeklyloca', (req, res) => {
     let today = new Date().setDate(new Date().getDate() + 1);
     let lastweek = new Date().setDate(new Date().getDate() - 7);
@@ -181,7 +180,6 @@ router.get('/weeklyloca', (req, res) => {
         }
     });
 });
-*/
 
 router.get('/random', (req, res) => {
     const randomsql = 'SELECT tag FROM tags ORDER BY RAND() LIMIT 1;';
