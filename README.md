@@ -1,5 +1,5 @@
-![](https://github.com/RiYaZe123/Picture-Place-Back-end-/assets/130757327/51a5421a-e31f-4df0-b375-a512db65ea09) # Picture Place
-
+# Picture Place
+![](https://github.com/RiYaZe123/Picture-Place-Back-end-/assets/130757327/51a5421a-e31f-4df0-b375-a512db65ea09)
 ## 1. 어떤 개발을?
 - - -
 이 프로젝트는 사진을 통해 내가 갔던 장소의 기록을 남기거나,
@@ -17,6 +17,7 @@
  - Express 기반으로 REST 서버 개발
  - JWT를 이용하여 로그인 기능 구현
 
+<br/>
 
 ## 2. 어떤 기술 스택
 - - -
@@ -24,7 +25,9 @@
  - **프레임워크** : Express
  - **DB** : MYSQL
  - **Tool** : Visual Studio Code, Git
- - **Open Source** : Google Place API
+ - **Open Source** : Google Places API
+
+<br/>
 
 ## 3. 어떤 사람과
 - - -
@@ -34,11 +37,15 @@
 
 홍상혁 (백엔드-팀원)
 
+<br/>
+
 ## 4. 개발 기간
 - - -
 2023.03.06 ~ 2023.04.14 (공부 기간)
 
 2023.04.14 ~ 2023.06.10 (개발 기간)
+
+<br/>
 
 ## 5. 어려웠던 점과 배운 것
 - - -
@@ -53,6 +60,7 @@ app.use(bodyParser.urlencoded({extended: false}));
 
 이 것이 무엇을 의미하는지 찾아보았다.
 
+<br/><br/>
 
 **2. 세션 VS JWT**
 **-> JWT를 쓴 이유는 우리가 개발하는 데 있어서 비싼 서버를 살 수 없었기 때문에 이 부분을 고려하여 JWT를 선택했다.**
