@@ -78,5 +78,41 @@ Secret Key 유출하면 조작이 가능해
 
 **그래서 access 토큰과 refresh 토큰의 유효시간을 제한하였다.**
 ```
+// 로그인
+router.post('/login', (req, res) => {
+    const { userid, password } = req.body;
 
+    if(userid && password) { // 정보가 모두 입력되었는지 확인
+        // 데이터 베이스 조회
+        sql = "select * from pinover.user where userid = ? limit 1;";
+        db.get().query(sql, userid, function (err,  rows) {
+            if (err) throw err;
+            if(rows.length > 0) {
+                let user = rows[0];
+                crypto.pbkdf2(password, user.salt, 100000, 64, 'sha512', function(err, derivedKey){ // 패스워드 sha512 암호화, salt 사용
+                    if(err) throw err;
+                    if(derivedKey.toString('base64') === user.password){ // 암호화된 패스워드가 일치하는지 확인
+                        const accessToken = jwt.sign({userid: userid}, secretKey, {'expiresIn': '1h'}); // 토큰 생성 - accessToken
+                        const refreshToken = jwt.sign({userid: userid}, refreshKey, {'expiresIn': '24h'}); // 토큰 생성 - refreshToken
+                        //tokens.push(token); // 토큰 배열에 추가
+                        res.cookie("access", accessToken);
+                        res.cookie("refresh", refreshToken);
+                        //res.json({ accessToken });
+                        res.json({ "message" : "로그인이 완료되었습니다." });
+                    } else {
+                        const error = { "errorCode" : "U007", "message" : "비밀번호가 일치하지 않습니다."};
+                        res.status(400).json(error);
+                    }
+                });
+            } else {
+                const error = { "errorCode" : "U006", "message" : "아이디가 존재하지 않습니다."};
+                res.status(400).json(error);
+            }
+        });
+    } else {
+        const error = { "errorCode" : "U008", "message" : "입력되지 않은 정보가 있습니다."};
+        res.status(400).json(error);
+    }
+});
 ```
+**accessToken과 refreshToken의 시간을 짧게 두어서 JWT의 단점을 줄이고자 하였다.**
