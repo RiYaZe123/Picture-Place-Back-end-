@@ -5,7 +5,7 @@
 이 프로젝트는 사진을 통해 내가 갔던 장소의 기록을 남기거나,
 다른 사람들과  위치 정보, 사진들을 공유하는 어플리케이션 입니다. 
 
-![](https://github.com/RiYaZe123/Picture-Place-Back-end-/blob/main/image14.png)![](https://github.com/RiYaZe123/Picture-Place-Back-end-/blob/main/image20.png)
+![](https://github.com/RiYaZe123/Picture-Place-Back-end-/assets/130757327/2c0075b9-053b-46d7-af8c-b2fbe0e6e938)
 
 **[기능]**
  - 로그인, 로그아웃, 회원가입, 회원정보 수정, 회원 탈퇴
