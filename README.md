@@ -6,6 +6,7 @@
 다른 사람들과  위치 정보, 사진들을 공유하는 어플리케이션 입니다. 
 
 ![](https://github.com/RiYaZe123/Picture-Place-Back-end-/blob/main/image14.png)
+![](https://github.com/RiYaZe123/Picture-Place-Back-end-/blob/main/image20.png)
 
 **[기능]**
  - 로그인, 로그아웃, 회원가입, 회원정보 수정, 회원 탈퇴
