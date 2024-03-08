@@ -27,6 +27,8 @@
  - **Tool** : Visual Studio Code, Git
  - **Open Source** : Google Places API
 
+![](https://github.com/RiYaZe123/Picture-Place-Back-end-/assets/130757327/7fc474df-a4a7-4896-9a04-3594d7a70740)
+
 <br/>
 
 ## 3. 어떤 사람과
