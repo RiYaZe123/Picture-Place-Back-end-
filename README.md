@@ -3,7 +3,7 @@
 ## 1. 프로그램 소개
 - - -
 이 프로젝트는 사진을 통해 내가 갔던 장소의 기록을 남기거나,
-다른 사람들과  위치 정보, 사진들을 공유하는 어플리케이션 입니다. 
+다른 사람들과  위치 정보, 사진들을 공유하는 어플리케이션이다. 
 
 **백엔드는 REST API를 개발하여 게시판, 검색 결과, 장소 추천 등의 기능들을 개발하였다.**
 
@@ -57,12 +57,34 @@
 **한 쪽의 문제인지 양 쪽의 문제인지 확인이 힘들었다.**
 **프론트 엔드와 연결이 됐는데 프론트엔드에서 보내는 내용이 빈칸으로 왔던 것**
 
-결론적으로는 이 한줄을 안써서 였다. 
+ body-parser는 클라이언트가 서버로 보낼 데이터를 파싱하는 모듈이다. 여기서 파싱은 서버에서 클라이언트의 요청을 알아들을 수 있게 해주는 역할이다.
+
+ 그래서 단순하게 백엔드에서 테스트할 때는 다음 한줄만 추가하였다.
+```
+app.use(bodyParser.json());
+```
+ 요청 본문을 json 형태로만 파싱하여 처리하면 될 것이라는 생각에 POSTMAN을 사용하여 테스트 케이스를 집어 넣어서 테스트를 진행하였을 때는 문제가 없었으나 프론트엔드와 맞물리는 과정에서 오류가 계속 떠서 이것저것 계속 수정했다.
+<br/>
+> body-parser deprecated undefined extended: provide extended option
+<br/>
+ 그러다 위의 문구가 뜬 것을 확인하고 해결 방법을 찾아서 넣었더니 정상적으로 출력이 되었다.
+
+ 'api.js'에서 이 한줄을 안써서 였다. 
 ```
 app.use(bodyParser.urlencoded({extended: false}));
 ```
+ bodyParser.urlencoded() 함수는 'application/x-www-form-urlencoded' 방식의 Content-Type 데이터를 받아준다.
+ 'application/x-www-form-urlencoded'는 POST 전송 방식 중 가장 기본이 되는 Content-Type이고
+ 데이터를 "key: value" 와 같은 형태로 만들어 주는 방식이다. 
 
-이 것이 무엇을 의미하는지 찾아보았다.
+ 테스트 당시에 POSTMAN으로 테스트 하면서 json으로만 데이터를 넣다보니 이 부분을 간과 했던 것이다. 아마 클라이언트에서는 값을 보냈으나 인코딩이 안되니 내용이 빈칸으로 올 수 밖에 없던 것이다. 
+ ![](https://github.com/RiYaZe123/Picture-Place-Back-end-/assets/130757327/32f3d889-80bf-44bf-9f70-efedc2ef3718)
+
+extend 옵션은<br/>
+application/x-www-form-urlencoded 방식이면 -> false<br/>
+application/x-www-form-urlencoded 방식이 아닌 다른 인코딩 방식이라면 -> true 를 넣어주면 된다.
+
+**이번 오류를 겪으면서 Content-Type에 대해 배우는 되는 시간을 가졌다.**
 
 <br/><br/>
 
