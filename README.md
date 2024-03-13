@@ -23,8 +23,8 @@
 
 ## 2. 기술 스택
 - - -
- - **언어** : Javascript(Node.js)
- - **프레임워크** : Express
+ - **Language** : Javascript(Node.js)
+ - **Framework** : Express
  - **DB** : MYSQL
  - **Tool** : Visual Studio Code, Git
  - **Open Source** : Google Places API
@@ -100,14 +100,14 @@ application/x-www-form-urlencoded 방식이 아닌 다른 인코딩 방식이라
 - 서버 세션 저장소를 사용하므로 요청이 많아지면 서버 부하가 심해진다.
 
 [JWT 장점]
-- 동시 접속자가 많을 때 서버 부하를 낮춘다.
+- **동시 접속자가 많을 때 서버 부하를 낮춘다.**
 - 클라이언트, 서버가 다른 도메인을 사용할 때 사용 가능하다.
 - 인증 정보를 서버에 별도로 저장할 필요가 없다. → 서버의 Stateless 특성이 유지된다.
 
 [JWT 단점]
 - 구현 복잡도가 증가한다.
 - JWT에 담는 내용이 커질수록 네트워크 비용이 증가한다.
-- 이미 생성된 JWT를 일부만 만료시킬 방법이 없다. (토큰의 유효기간을 너무 길게 잡으면 안된다.)
+- **이미 생성된 JWT를 일부만 만료시킬 방법이 없다. (토큰의 유효기간을 너무 길게 잡으면 안된다.)**
 - Secret Key 유출 시 JWT 조작이 가능하다.
 
 **아무래도 서버 부하를 낮춰야하는 관계로 JWT를 선택했다.**
